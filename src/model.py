@@ -260,7 +260,7 @@ class CSTA(nn.Module):
                             kv = torch.cat(reshaped_feats, dim=1)
                             # Flatten back to [B*(T*N), P, D] so temporal_preprocess can handle it
                             kv = kv.view(-1, kv.shape[2], self.dim)
-                        x_old = block.norm_t(x_old + block_t_msa_old + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
+                        x_old = block.norm_t(x_old + block_t_msa_old + self.temporal_cross_attention_old[block_idx](q, kv, kv, B, T, self.num_patches))
                     else:
                         x_old = block.norm_t(x_old + block_t_msa_old)
                     
@@ -278,7 +278,7 @@ class CSTA(nn.Module):
                             kv = spatial_adapter_features_old[-2]
                         else:
                             kv = torch.cat(spatial_adapter_features_old[:-1], dim=1)
-                        x_old = block.norm_s(x_old + block_s_msa_old + block.spatial_cross_attention(q, kv, kv))
+                        x_old = block.norm_s(x_old + block_s_msa_old + self.spatial_cross_attention_old[block_idx](q, kv, kv))
                     else:
                         x_old = block.norm_s(x_old + block_s_msa_old)
 
@@ -317,6 +317,26 @@ class CSTA(nn.Module):
         B, T, C, H, W = x.shape
         x = self.process_x_for_forward(x)
         loss = ce_loss = distil_loss = lt_loss = ls_loss = accuracy = None
+
+        if self.calculate_distil_loss:
+            import copy
+            self.temporal_cross_attention_old = nn.ModuleList()
+            self.spatial_cross_attention_old = nn.ModuleList()
+            
+            for block in self.blocks:
+                frozen_copy = copy.deepcopy(block.temporal_cross_attention)
+                for param in frozen_copy.parameters():
+                    param.requires_grad = False
+                frozen_copy.eval() 
+                self.temporal_cross_attention_old.append(frozen_copy)
+                del frozen_copy
+
+                frozen_copy = copy.deepcopy(block.spatial_cross_attention)
+                for param in frozen_copy.parameters():
+                    param.requires_grad = False
+                frozen_copy.eval() 
+                self.spatial_cross_attention_old.append(frozen_copy)
+                del frozen_copy
 
         x, distil_loss = self.vanilla_forward(x, B, T)
         
