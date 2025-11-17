@@ -159,6 +159,53 @@ class CSTA(nn.Module):
         self.calculate_lt_ls_loss = True
         self.model_attributes = self.get_model_attributes()
 
+    def load_weights(self, ste_dict_path):
+        state_dict = load_model_weights(ste_dict_path)
+        self.load_state_dict(state_dict, strict=False)
+
+    def prepare_architecture_for_current_task(self):
+        current_attrs = self.get_model_attributes()
+        expected_count = self.task_n + 1
+        if (current_attrs["adapters_per_block"] == (expected_count-1) and 
+            current_attrs["total_classifiers"] == expected_count):
+            print(f"Architecture already matches Task {self.task_n}")
+            print(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
+            return
+        
+        if self.task_n > 0:
+            for i in range(self.task_n):
+                self.add_one_adapter_per_block()
+                self.add_one_new_classifier(self.config.task.num_classes_new)
+
+        checkpoint_path_to_load = None
+        if self.task_n == 0:
+            if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
+                checkpoint_path_to_load = self.config.checkpoints.task_0
+                print(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
+            else:
+                print("Task 0: Training from scratch. No checkpoint provided.")
+        else:
+            prev_task_n = self.task_n - 1
+            checkpoint_path_to_load = getattr(self.config.checkpoints, f"old_checkpoint", None)
+
+            if checkpoint_path_to_load is None:
+                print(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
+                raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
+            print(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
+
+        if checkpoint_path_to_load:
+            self.load_weights(checkpoint_path_to_load)
+        else:
+            pass 
+
+        if self.task_n > 0:
+            print(f"Task {self.task_n}: Freezing all parameters except for the new components.")
+            self.freeze_all_but_last()
+
+        # Final check
+        self.model_attributes = self.get_model_attributes()
+        print(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
+
     def freeze_all_but_last(self):
         for classifier in self.classifiers[:-1]:
             for param in classifier.parameters():
@@ -196,8 +243,10 @@ class CSTA(nn.Module):
             if feat is None: return None
             # Pool: [B*T, P, D] -> [B, T, D] -> [B, D]
             pooled = feat.view(B, T, -1, self.dim)[:, :, 0, :].mean(dim=1) 
-            # Using the LAST classifier (current task) for relation extraction
-            return self.classifiers[-1](pooled)
+            return self.classifiers[0](pooled)
+
+        # Get Logits for components
+        logits_s = pool_and_classify(s_feat)
 
         # Get Logits for components
         logits_s = pool_and_classify(s_feat)
@@ -410,6 +459,8 @@ class CSTA(nn.Module):
                 del frozen_copy
 
         logits, distil_loss, full_feat, t_feat_curr, s_feat_curr, t_feat_old, s_feat_old = self.vanilla_forward(x, B, T)
+        if distil_loss is not None:
+            del self.temporal_cross_attention_old, self.spatial_cross_attention_old
         predictions = torch.argmax(logits, dim=-1)
 
         R_s_curr, R_t_curr = self.get_relations(s_feat_curr, t_feat_curr, full_feat, B, T)
