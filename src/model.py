@@ -1,7 +1,10 @@
 import torch, pdb, json, warnings
 import torch.nn as nn
 import torch.nn.functional as F
-from .model_utils import Adapter, TimesFormerBlock
+from .model_utils import (
+    Adapter, TimesFormerBlock, save_current_model, load_model_weights, ConfigurationError
+)
+from .utils import get_config
 from dataclasses import dataclass
 from typing import Optional
 from einops import rearrange
@@ -22,26 +25,7 @@ class CSTAOutput:
 
 class CSTA(nn.Module):
     def __init__(self,
-                 num_classes,
-                 task_n = 0,
-                 num_frames = 8, 
-                 img_size = 224, 
-                 patch_size = 16, 
-                 dim = 480, 
-                 num_layers=12, 
-                 num_channels = 3,
-                 num_heads = 8,
-                 init_with_adapters = False,
-                 calculate_distil_loss = False,
-                 calculate_lt_ls_loss = False,
-                 count_relations = False,
-                 miu_d = 0.1,
-                 miu_t = 0.1,
-                 miu_s = 0.1,
-                 lambda_1 = 0.2,
-                 K=5,
-                 temporal_relations_path = None,
-                 spatial_relations_path = None,
+                 config_file="config/train_task0.yml",
                  **kwargs,
                  ):
         super().__init__()
@@ -71,36 +55,54 @@ class CSTA(nn.Module):
             get_distil_loss: calculates the distillation loss
             forward: forward pass of the model
         """
-        self.dim = dim
-        self.task_n = task_n
-        self.img_size = img_size
-        self.calculate_distil_loss = calculate_distil_loss
-        self.calculate_lt_ls_loss = calculate_lt_ls_loss
-        self.miu_d = miu_d
-        self.miu_t = miu_t
-        self.miu_s = miu_s
-        self.lambda_1 = lambda_1
-        self.num_frames = num_frames
-        self.K = K
-        self.count_relations = count_relations
+        # load self.config
+        self.config = get_config(config_file)
+        
+        # load model self.configs
+        self.dim = self.config.model.dim
+        self.num_layers = self.config.model.num_layers
+        self.num_heads = self.config.model.num_heads
+        
+        # load data self.configs (also belongs to the model self.configs)
+        self.img_size = self.config.data.img_size
+        self.num_channels = self.config.data.num_channels
+        self.patch_size = self.config.data.patch_size
+        self.num_frames = self.config.data.num_frames
 
+        # load loss self.configs
+        self.calculate_distil_loss = self.config.loss.calculate_distil_loss
+        self.calculate_lt_ls_loss = self.config.loss.calculate_lt_ls_loss
+        self.miu_d = self.config.loss.miu_d
+        self.miu_t = self.config.loss.miu_t
+        self.miu_s = self.config.loss.miu_s
+        self.lambda_1 = self.config.loss.lambda_1
+        self.K = self.config.loss.K
+        self.count_relations = self.config.loss.count_relations
+        temporal_relations_path = self.config.loss.temporal_relations_path
+        spatial_relations_path = self.config.loss.spatial_relations_path
+
+        # load tasks self.configs
+        self.task_n = self.config.task.task_n
+        init_with_adapters = self.config.task.init_with_adapters
+        self.num_classes_t0 = self.config.task.num_classes_t0
+        
         # convert video frames to patches with conv2d, initialize cls_token, positional embeddings
-        self.num_patches = (img_size // patch_size) ** 2
-        self.patch_embed = nn.Conv2d(num_channels, dim, kernel_size=patch_size, stride=patch_size)
-        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
-        self.norm = nn.LayerNorm(dim)
+        self.num_patches = (self.img_size // self.patch_size) ** 2
+        self.patch_embed = nn.Conv2d(self.num_channels, self.dim, kernel_size=self.patch_size, stride=self.patch_size)
+        self.cls_token = nn.Parameter(torch.randn(1, 1, self.dim))
+        self.norm = nn.LayerNorm(self.dim)
         self.temporal_pos_embed = nn.Parameter(torch.randn(1, self.num_frames, 1, self.dim))
         self.spatial_pos_embed = nn.Parameter(torch.randn(1, self.num_patches + 1, self.dim))
 
         # keeping a list of adapters. Each transformer block has a list of adapters
-        self.temporal_adapters = nn.ModuleList([nn.ModuleList() for _ in range(num_layers)])
-        self.spatial_adapters = nn.ModuleList([nn.ModuleList() for _ in range(num_layers)])
+        self.temporal_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
+        self.spatial_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
 
         # keeping a list of transformer blocks and inter task cross attention blocks
-        self.blocks = nn.ModuleList([TimesFormerBlock(dim = dim, num_heads=num_heads) for _ in range(num_layers)])
+        self.blocks = nn.ModuleList([TimesFormerBlock(dim = self.dim, num_heads=self.num_heads) for _ in range(self.num_layers)])
 
         # keeping a list of classifiers
-        self.classifiers = nn.ModuleList([nn.Linear(dim, num_classes)])
+        self.classifiers = nn.ModuleList([nn.Linear(self.dim, self.num_classes_t0)])
 
         # add the first adapter to all the timesformer blocks
         if init_with_adapters:
@@ -109,7 +111,7 @@ class CSTA(nn.Module):
         # keep the numbers stored somewhere
         self.model_attributes = self.get_model_attributes()
         
-        if temporal_relations_path and spatial_relations_path is not None:
+        if temporal_relations_path is not None and spatial_relations_path is not None:
             with open(temporal_relations_path, 'r') as f:
                 self.temporal_relations = json.load(f)
             with open(spatial_relations_path, 'r') as f:
@@ -172,54 +174,22 @@ class CSTA(nn.Module):
                 for param in adapter.parameters():
                     param.requires_grad = False
 
-    def get_distil_loss(self, old_logits, new_logits):
-        return F.kl_div(F.log_softmax(new_logits, dim=-1), F.softmax(old_logits, dim=-1), reduction='batchmean')
-    
-    def run_classifiers(self, x):
-        outputs = []            
+    def run_classifier_head(self, last_hidden_layer, B, T):
+        x = last_hidden_layer
+        x = x[:, :1, :].squeeze(1).reshape([B,T,self.dim]).mean(dim=1)
+        outputs = []
         for classifier in self.classifiers:
             outputs.append(classifier(x))
-        final_tensor = torch.cat(outputs, dim=-1)
-        return final_tensor
-
-    def process_features(self, features, B, T, classifier):
-        if isinstance(features, list):
-            features = torch.mean(torch.stack(features, dim=1), dim=1).squeeze(1).reshape([B,T,self.dim]).mean(dim=1)
-        clf_f = classifier(features)
-        return clf_f
-
-    def get_relations(self, spatial_features, temporal_features, full_features, B, T, classifier):
-        clf_s = self.process_features(spatial_features, B, T, classifier)
-        clf_t = self.process_features(temporal_features, B, T, classifier)
-        clf_full = self.process_features(full_features, B, T, classifier)
-        
-        cosine_st = F.cosine_similarity(clf_t, clf_s)
-        spatial_ratio = clf_s / clf_full
-        temporal_ratio = clf_t / clf_full
-        Rs, Rt = torch.cat([spatial_ratio, cosine_st.unsqueeze(-1)], dim=-1), torch.cat([temporal_ratio, cosine_st.unsqueeze(-1)], dim=-1)
-        return Rs, Rt
-    
-    def _get_relations(self, clf_s, clf_t, full_features, B,T,classifier):
-        clf_full = self.process_features(full_features, B, T, classifier)
-        
-        cosine_st = F.cosine_similarity(clf_t, clf_s)
-        spatial_ratio = clf_s / clf_full
-        temporal_ratio = clf_t / clf_full
-        Rs, Rt = torch.cat([spatial_ratio, cosine_st.unsqueeze(-1)], dim=-1), torch.cat([temporal_ratio, cosine_st.unsqueeze(-1)], dim=-1)
-        return Rs, Rt
+        return torch.cat(outputs, dim=-1)
 
     def vanilla_forward(self, x, B, T):
         # REFER TO FIGURE 2 IN THE PAPER
-        # First validate all the blocks exists
-        assert self.taks_n == len(self.temporal_adapters) == len(self.spatial_adapters), f"The number of temporal and spatial blocks doesn't match the current task number. task_n = {self.task_n}, len(temporal_adapters) = {len(self.temporal_adapters)}, len(temporal_adapters) = {len(self.spatial_adapters)}"
-        warnings.warn(f"For {self.task_n}-th index task, {len(self.temporal_adapters)} adapters and one cross attention will be used.")
-        if self.task_n != 0 and self.calculate_distil_loss:
-            raise ValueError("You can not run distillation loss during the first task. Initialize with calculate_distil_loss=False")
-        
+        if self.task_n == 0 and self.calculate_distil_loss:
+            raise ConfigurationError("You can not run distillation loss during the first task. Initialize with calculate_distil_loss=False")
+
+        distil_loss = None
         if self.calculate_distil_loss:
             x_old = x
-        else:
-            x_old = None
 
         for block_idx, block in enumerate(self.blocks):
             # x goes to t_msa -> block_t_msa -> added to temporal_adapter_features
@@ -228,34 +198,42 @@ class CSTA(nn.Module):
             # add and norm
             block_t_msa = block.temporal_msa(x, B, T, self.num_patches)
             temporal_adapter_features = [block_t_msa]
-            sum_of_adapter_outputs = 0
 
             if self.task_n != 0:
                 for temporal_adapters in self.temporal_adapters[block_idx]:
                     adapter_output = temporal_adapters(block_t_msa)
-                    sum_of_adapter_outputs += adapter_output
-                    temporal_adapter_features.append(block_t_msa + sum_of_adapter_outputs)
-
+                    temporal_adapter_features.append(adapter_output)
+                
                 q = temporal_adapter_features[-1]
-                kv = torch.cat(temporal_adapter_features[:-1], dim=1)
-                x = block.norm_t(x + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
+                if self.task_n == 1:
+                    kv = torch.tensor(temporal_adapter_features[-2])
+                else:
+                    # Reshape [B*T, P, D] -> [B, T, P, D]
+                    reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features[:-1]]
+                    # Concat along Time (dim=1) -> [B, T*N, P, D]
+                    kv = torch.cat(reshaped_feats, dim=1)
+                    # Flatten back to [B*(T*N), P, D] so temporal_preprocess can handle it
+                    kv = kv.view(-1, kv.shape[2], self.dim)
+                # pdb.set_trace()
+                x = block.norm_t(x + block_t_msa + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
             else:
                 x = block.norm_t(x + block_t_msa)
             
             # same for spatial
             block_s_msa = block.spatial_msa(x)
             spatial_adapter_features = [block_s_msa]
-            sum_of_adapter_outputs = 0
 
             if self.task_n != 0:
                 for spatial_adapters in self.spatial_adapters[block_idx]:
                     adapter_output = spatial_adapters(block_s_msa)
-                    sum_of_adapter_outputs += adapter_output
-                    spatial_adapter_features.append(block_s_msa + sum_of_adapter_outputs)
+                    spatial_adapter_features.append(adapter_output)
 
                 q = spatial_adapter_features[-1]
-                kv = torch.cat(spatial_adapter_features[:-1], dim=1)
-                x = block.norm_s(x + block.spatial_cross_attention(q, kv, kv))
+                if self.task_n == 1:
+                    kv = spatial_adapter_features[-2]
+                else:
+                    kv = torch.cat(spatial_adapter_features[:-1], dim=1)
+                x = block.norm_s(x + block_s_msa + block.spatial_cross_attention(q, kv, kv))
             else:
                 x = block.norm_s(x + block_s_msa)
 
@@ -266,54 +244,55 @@ class CSTA(nn.Module):
                 with torch.no_grad():
                     block_t_msa_old = block.temporal_msa(x_old, B, T, self.num_patches)
                     temporal_adapter_features_old = [block_t_msa_old]
-                    sum_of_adapter_outputs = 0
 
                     if (self.task_n - 1) != 0:
                         for temporal_adapters in self.temporal_adapters[block_idx][:-1]:
                             adapter_output = temporal_adapters(block_t_msa_old)
-                            sum_of_adapter_outputs += adapter_output
-                            temporal_adapter_features_old.append(block_t_msa_old + sum_of_adapter_outputs)
+                            temporal_adapter_features_old.append(adapter_output)
 
                         q = temporal_adapter_features_old[-1]
-                        kv = torch.cat(temporal_adapter_features_old[:-1], dim=1)
-                        x_old = block.norm_t(x_old + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
+                        if self.task_n == 1:
+                            kv = torch.tensor(temporal_adapter_features_old[-2])
+                        else:
+                            # Reshape [B*T, P, D] -> [B, T, P, D]
+                            reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features_old[:-1]]
+                            # Concat along Time (dim=1) -> [B, T*N, P, D]
+                            kv = torch.cat(reshaped_feats, dim=1)
+                            # Flatten back to [B*(T*N), P, D] so temporal_preprocess can handle it
+                            kv = kv.view(-1, kv.shape[2], self.dim)
+                        x_old = block.norm_t(x_old + block_t_msa_old + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
                     else:
                         x_old = block.norm_t(x_old + block_t_msa_old)
                     
                     # same for spatial
                     block_s_msa_old = block.spatial_msa(x_old)
                     spatial_adapter_features_old = [block_s_msa_old]
-                    sum_of_adapter_outputs = 0
 
                     if (self.task_n - 1) != 0:
                         for spatial_adapters in self.spatial_adapters[block_idx][:-1]:
                             adapter_output = spatial_adapters(block_s_msa_old)
-                            sum_of_adapter_outputs += adapter_output
-                            spatial_adapter_features_old.append(block_s_msa_old + sum_of_adapter_outputs)
+                            spatial_adapter_features_old.append(adapter_output)
 
                         q = spatial_adapter_features_old[-1]
-                        kv = torch.cat(spatial_adapter_features_old[:-1], dim=1)
-                        x_old = block.norm_s(x_old + block.spatial_cross_attention(q, kv, kv))
+                        if self.task_n == 1:
+                            kv = spatial_adapter_features_old[-2]
+                        else:
+                            kv = torch.cat(spatial_adapter_features_old[:-1], dim=1)
+                        x_old = block.norm_s(x_old + block_s_msa_old + block.spatial_cross_attention(q, kv, kv))
                     else:
                         x_old = block.norm_s(x_old + block_s_msa_old)
 
                     # final mlp
                     x_old = block.norm_mlp(x_old + block.mlp(x_old))
                 
-        x = x[:, :1, :].squeeze(1).reshape([B,T,self.dim]).mean(dim=1)
-        outputs = []
-        for classifier in self.classifiers:
-            outputs.append(classifier(x))
-        x = torch.cat(outputs, dim=-1)
+        x = self.run_classifier_head(x, B, T)
         
         if self.calculate_distil_loss:
-            x_old = x_old[:, :1, :].squeeze(1).reshape([B,T,self.dim]).mean(dim=1)
-            outputs = []
-            for classifier in self.classifiers:
-                outputs.append(classifier(x_old))
-            x_old = torch.cat(outputs, dim=-1)
+            with torch.no_grad():
+                x_old = self.run_classifier_head(x_old,B,T)
+            distil_loss = F.kl_div(F.log_softmax(x, dim=1), F.softmax(x_old, dim=1), reduction="batchmean")
 
-        return x, x_old
+        return x, distil_loss
 
     def process_x_for_forward(self, x):
         B, T, C, H, W = x.shape
@@ -339,10 +318,10 @@ class CSTA(nn.Module):
         x = self.process_x_for_forward(x)
         loss = ce_loss = distil_loss = lt_loss = ls_loss = accuracy = None
 
-        x, x_old = self.vanilla_forward(x, B, T)
+        x, distil_loss = self.vanilla_forward(x, B, T)
         
         final_logits = x
-        predictions = torch.softmax(final_logits, dim=-1)
+        predictions = torch.argmax(final_logits, dim=-1)
 
         spatial_relations, temporal_relations = None, None
         if self.count_relations:
@@ -350,50 +329,12 @@ class CSTA(nn.Module):
         
         total_loss = []
         if targets is not None:
-            accuracy = (predictions.argmax(-1) == targets).float().mean()
+            accuracy = (predictions == targets).float().mean()
             ce_loss = F.cross_entropy(final_logits, targets)
             total_loss.append(ce_loss)
-            x_old = x_old[:, :1, :].squeeze(1).reshape([B,T,self.dim]).mean(dim=1)
             
             if self.calculate_distil_loss:
-                final_logits_old = self.run_classifiers(x_old)
-                distil_loss = self.get_distil_loss(final_logits_old, final_logits)
                 total_loss.append(self.miu_d * distil_loss) if distil_loss is not None else None
-            
-            if self.calculate_lt_ls_loss:
-                self.temporal_relations = {int(key): torch.tensor(value, device = next(self.parameters()).device) for key, value in self.temporal_relations.items()}
-                self.spatial_relations = {int(key): torch.tensor(value, device = next(self.parameters()).device) for key, value in self.spatial_relations.items()}
-                self.full_features_old = x_old
-                
-                if len(self.classifiers) < 2:
-                    raise ValueError(f"Classifiers have {len(self.classifiers)} modules, meaning its not ready for current task.")
-                
-                # To calculat Lt and Ls losses, first, we need Rsn and Rtn as well as Rsn_old, Rtn_old
-                Rsn, Rtn = self.get_relations(self.spatial_features, self.temporal_features, self.full_features, B, T, self.classifiers[-1])
-                Rsn_1, Rtn_1 = self.get_relations(self.spatial_features_old, self.temporal_features_old, self.full_features_old, B, T, self.classifiers[-2])
-
-                # R are of shape B, something [usually classes + 1]
-                # count the top k similarities
-                temporal_similarities = []
-                for _, value in self.temporal_relations.items():
-                    temporal_similarities.append(F.cosine_similarity(Rtn_1, value.unsqueeze(0)))
-                top_k_temporal_sum = torch.sum(torch.topk(torch.stack(temporal_similarities).reshape([B, len(self.temporal_relations)]), k=self.K, dim=1)[0], dim=1)
-                
-                spatial_similarities = []
-                for _, value in self.spatial_relations.items():
-                    spatial_similarities.append(F.cosine_similarity(Rsn_1, value.unsqueeze(0)))
-                top_k_spatial_sum = torch.sum(torch.topk(torch.stack(spatial_similarities).reshape([B, len(self.spatial_relations)]), k=self.K, dim=1)[0], dim=1)
-                
-                SnK = self.process_features(self.spatial_features, B, T, self.classifiers[-1]) * top_k_spatial_sum.reshape([B,1])
-                TnK = self.process_features(self.temporal_features, B, T, self.classifiers[-1]) * top_k_temporal_sum.reshape([B,1])
-                
-                # SnK and TnK have dimensions B, classes since they're nothing but classifiers output mul by a scalar
-                RsnK, RtnK = self._get_relations(SnK, TnK, self.full_features, B, T, self.classifiers[-1])
-                
-                lt_loss = (1 - F.cosine_similarity(RtnK, Rtn)).mean()
-                ls_loss = (1 - F.cosine_similarity(RsnK, Rsn)).mean()
-                total_loss.append(self.miu_t * lt_loss) if lt_loss is not None else None
-                total_loss.append(self.miu_s * ls_loss) if ls_loss is not None else None
             
             loss = sum(total_loss)
 

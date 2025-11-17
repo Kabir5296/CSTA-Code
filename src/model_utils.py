@@ -96,8 +96,8 @@ class TemporalMultiheadCrossAttention(nn.Module):
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
         self.proj = nn.Linear(dim, dim)
 
-    def temporal_preprocess(self, x, B, T, num_patches):
-        x = x.reshape(B, T, num_patches + 1, self.dim)      # Shape: B, T, num_patches+1, dim
+    def temporal_preprocess(self, x, B, T):
+        x = x.reshape(B, T, x.shape[1], self.dim)      # Shape: B, T, num_patches+1, dim
         cls_token, patches = x[:, :, :1, :], x[:, :, 1:, :]
         patches = patches.permute(0, 2, 1, 3)               # Shape: B, num_patches, T, dim
         patches = patches.reshape(-1, T, self.dim)          # Shape: B*num_patches, T, dim
@@ -105,9 +105,9 @@ class TemporalMultiheadCrossAttention(nn.Module):
 
     def forward(self, query, key, value, B, T, num_patches):
         T_kv = key.shape[0] // B 
-        q_patches, q_cls_token = self.temporal_preprocess(query, B, T, num_patches)
-        k_patches, _ = self.temporal_preprocess(key, B, T_kv, num_patches)
-        v_patches, _ = self.temporal_preprocess(value, B, T_kv, num_patches)
+        q_patches, q_cls_token = self.temporal_preprocess(query, B, T)
+        k_patches, _ = self.temporal_preprocess(key, B, T_kv)
+        v_patches, _ = self.temporal_preprocess(value, B, T_kv)
         attn_output, _ = self.msa(query=q_patches, key=k_patches, value=v_patches)  # Shape: (B*num_patches, T, dim)
         x = self.proj(attn_output)                                                  # Shape: (B*num_patches, T, dim)
 
@@ -147,3 +147,13 @@ class TimesFormerBlock(nn.Module):
     def forward(self, x):
         """This forward method is not used in the actual implementation, hence not implemented"""
         raise NotImplementedError("This forward method is not meant to be used. Please define forward in the CSTA forward method")
+    
+def save_current_model(model, path):
+    torch.save(model.state_dict(), path)
+    print(f"Current model successfully saved to: {path}")
+    
+def load_model_weights(weights_path):
+    return torch.load(weights_path, weights_only=True)
+
+class ConfigurationError(Exception):
+    pass

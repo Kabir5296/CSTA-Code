@@ -1,0 +1,31 @@
+model:
+  model_name: csta
+  dim: 512
+  num_layers: 12
+  num_heads: 8
+
+data:
+  dataset_name: ucf
+  num_frames: 8
+  img_size: 16
+  num_channels: 3
+  patch_size: 16
+
+loss:
+  calculate_distil_loss: False
+  calculate_lt_ls_loss: False
+  count_relations: False
+  miu_d: 0.1
+  miu_t: 0.1
+  miu_s: 0.1
+  lambda_1: 0.2
+  K: 5
+  count_relations: False
+  temporal_relations_path: null
+  spatial_relations_path: null
+
+task:
+  task_n: 1
+  init_with_adapters: False
+  num_classes_t0: 50
+  num_classes_new: 10
