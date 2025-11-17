@@ -116,6 +116,9 @@ class CSTA(nn.Module):
                 self.temporal_relations = json.load(f)
             with open(spatial_relations_path, 'r') as f:
                 self.spatial_relations = json.load(f)
+        else:
+            self.temporal_relations = None
+            self.spatial_relations = None
 
     def get_model_attributes(self):
         total_blocks = len(self.blocks)
@@ -181,9 +184,65 @@ class CSTA(nn.Module):
         for classifier in self.classifiers:
             outputs.append(classifier(x))
         return torch.cat(outputs, dim=-1)
+    
+    def get_relations(self, s_feat, t_feat, f_feat, B, T):
+        """R = (Clf(S)/Clf(F), Cos(Clf(S), Clf(T)))"""
+        
+        # Run classifier on separate components
+        # We use the current (newest) classifier for the relation extraction
+
+        # Helper to pool and classify
+        def pool_and_classify(feat):
+            if feat is None: return None
+            # Pool: [B*T, P, D] -> [B, T, D] -> [B, D]
+            pooled = feat.view(B, T, -1, self.dim)[:, :, 0, :].mean(dim=1) 
+            # Using the LAST classifier (current task) for relation extraction
+            return self.classifiers[-1](pooled)
+
+        # Get Logits for components
+        logits_s = pool_and_classify(s_feat)
+        logits_t = pool_and_classify(t_feat)
+        logits_f = pool_and_classify(f_feat)
+
+        # Avoid division by zero
+        eps = 1e-6
+        cos_st = F.cosine_similarity(logits_s, logits_t, dim=1).unsqueeze(1)
+        
+        # Rs = Concat( Ls/Lf, Cos(Ls, Lt) )
+        ratio_s = logits_s / (logits_f + eps)
+        ratio_t = logits_t / (logits_f + eps)
+
+        return torch.cat([ratio_s, cos_st], dim=1), torch.cat([ratio_t, cos_st], dim=1)
+
+    def calculate_causal_loss(self, R_curr, R_old, stored_relations):
+        """Calculates Lt or Ls based on Eq (7)"""
+        if stored_relations is None or len(stored_relations) == 0:
+            return torch.tensor(0.0, device=R_curr.device)
+
+        # Shape: [M, Relation_Dim]
+        memory_bank = torch.tensor(stored_relations, device=R_curr.device, dtype=torch.float32)
+        
+        # Normalize for Cosine Search
+        R_old_norm = F.normalize(R_old, p=2, dim=1)
+        mem_norm = F.normalize(memory_bank, p=2, dim=1)
+
+        # KNN Search (Algorithm 1, Line 5-6)
+        sim_matrix = torch.mm(R_old_norm, mem_norm.t())
+        
+        # Get Top-K similar relations
+        top_k_val, top_k_idx = torch.topk(sim_matrix, k=min(self.K, len(stored_relations)), dim=1)
+        
+        # Calculate Hybrid Relation R^K (Target)
+        weights = F.softmax(top_k_val, dim=1).unsqueeze(-1) # [B, K, 1]
+        retrieved_rels = memory_bank[top_k_idx]             # [B, K, Rel_Dim]
+        
+        # R_target [B, Rel_Dim]
+        R_target = torch.sum(retrieved_rels * weights, dim=1)
+
+        # Calculate Loss Eq (7): 1 - Cos(R^K, R_n)
+        return 1 - F.cosine_similarity(R_target, R_curr, dim=1).mean()
 
     def vanilla_forward(self, x, B, T):
-        # REFER TO FIGURE 2 IN THE PAPER
         if self.task_n == 0 and self.calculate_distil_loss:
             raise ConfigurationError("You can not run distillation loss during the first task. Initialize with calculate_distil_loss=False")
 
@@ -191,11 +250,15 @@ class CSTA(nn.Module):
         if self.calculate_distil_loss:
             x_old = x
 
+        t_feat_curr = None
+        s_feat_curr = None
+        t_feat_old = None
+        s_feat_old = None
+
         for block_idx, block in enumerate(self.blocks):
-            # x goes to t_msa -> block_t_msa -> added to temporal_adapter_features
-            # block_t_msa goes through all adapters -> temporal_adapter_features
-            # cross_multihead_attention is done
-            # add and norm
+            is_last_layer = (block_idx == len(self.blocks) - 1)
+
+            # Temporal Branch
             block_t_msa = block.temporal_msa(x, B, T, self.num_patches)
             temporal_adapter_features = [block_t_msa]
 
@@ -208,18 +271,18 @@ class CSTA(nn.Module):
                 if self.task_n == 1:
                     kv = torch.tensor(temporal_adapter_features[-2])
                 else:
-                    # Reshape [B*T, P, D] -> [B, T, P, D]
                     reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features[:-1]]
-                    # Concat along Time (dim=1) -> [B, T*N, P, D]
                     kv = torch.cat(reshaped_feats, dim=1)
-                    # Flatten back to [B*(T*N), P, D] so temporal_preprocess can handle it
                     kv = kv.view(-1, kv.shape[2], self.dim)
-                # pdb.set_trace()
                 x = block.norm_t(x + block_t_msa + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
             else:
                 x = block.norm_t(x + block_t_msa)
             
-            # same for spatial
+            # Capture Temporal Feature (Tn) at last layer
+            if is_last_layer:
+                t_feat_curr = x.clone()
+
+            # Spatial Branch
             block_s_msa = block.spatial_msa(x)
             spatial_adapter_features = [block_s_msa]
 
@@ -237,7 +300,11 @@ class CSTA(nn.Module):
             else:
                 x = block.norm_s(x + block_s_msa)
 
-            # final mlp
+            # Capture Spatial Feature (Sn) at last layer
+            if is_last_layer:
+                s_feat_curr = x.clone()
+
+            # Final MLP
             x = block.norm_mlp(x + block.mlp(x))
             
             if self.calculate_distil_loss:
@@ -254,16 +321,16 @@ class CSTA(nn.Module):
                         if self.task_n == 1:
                             kv = torch.tensor(temporal_adapter_features_old[-2])
                         else:
-                            # Reshape [B*T, P, D] -> [B, T, P, D]
                             reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features_old[:-1]]
-                            # Concat along Time (dim=1) -> [B, T*N, P, D]
                             kv = torch.cat(reshaped_feats, dim=1)
-                            # Flatten back to [B*(T*N), P, D] so temporal_preprocess can handle it
                             kv = kv.view(-1, kv.shape[2], self.dim)
                         x_old = block.norm_t(x_old + block_t_msa_old + self.temporal_cross_attention_old[block_idx](q, kv, kv, B, T, self.num_patches))
                     else:
                         x_old = block.norm_t(x_old + block_t_msa_old)
                     
+                    if is_last_layer:
+                        t_feat_old = x_old.clone()
+
                     # same for spatial
                     block_s_msa_old = block.spatial_msa(x_old)
                     spatial_adapter_features_old = [block_s_msa_old]
@@ -282,17 +349,21 @@ class CSTA(nn.Module):
                     else:
                         x_old = block.norm_s(x_old + block_s_msa_old)
 
+                    if is_last_layer:
+                        s_feat_old = x_old.clone()
+
                     # final mlp
                     x_old = block.norm_mlp(x_old + block.mlp(x_old))
-                
-        x = self.run_classifier_head(x, B, T)
+        
+        # Run classifiers
+        logits = self.run_classifier_head(x, B, T)
         
         if self.calculate_distil_loss:
             with torch.no_grad():
-                x_old = self.run_classifier_head(x_old,B,T)
-            distil_loss = F.kl_div(F.log_softmax(x, dim=1), F.softmax(x_old, dim=1), reduction="batchmean")
+                logits_old = self.run_classifier_head(x_old, B, T)
+            distil_loss = F.kl_div(F.log_softmax(logits, dim=1), F.softmax(logits_old, dim=1), reduction="batchmean")
 
-        return x, distil_loss
+        return logits, distil_loss, x, t_feat_curr, s_feat_curr, t_feat_old, s_feat_old
 
     def process_x_for_forward(self, x):
         B, T, C, H, W = x.shape
@@ -338,28 +409,32 @@ class CSTA(nn.Module):
                 self.spatial_cross_attention_old.append(frozen_copy)
                 del frozen_copy
 
-        x, distil_loss = self.vanilla_forward(x, B, T)
-        
-        final_logits = x
-        predictions = torch.argmax(final_logits, dim=-1)
+        logits, distil_loss, full_feat, t_feat_curr, s_feat_curr, t_feat_old, s_feat_old = self.vanilla_forward(x, B, T)
+        predictions = torch.argmax(logits, dim=-1)
 
-        spatial_relations, temporal_relations = None, None
-        if self.count_relations:
-            spatial_relations, temporal_relations = self.get_relations(self.spatial_features, self.temporal_features, self.full_features, B, T, self.classifiers[-1])
-        
+        R_s_curr, R_t_curr = self.get_relations(s_feat_curr, t_feat_curr, full_feat, B, T)
+                
         total_loss = []
         if targets is not None:
             accuracy = (predictions == targets).float().mean()
-            ce_loss = F.cross_entropy(final_logits, targets)
+            ce_loss = F.cross_entropy(logits, targets)
             total_loss.append(ce_loss)
             
             if self.calculate_distil_loss:
                 total_loss.append(self.miu_d * distil_loss) if distil_loss is not None else None
             
+            if self.calculate_lt_ls_loss and self.calculate_distil_loss:
+                with torch.no_grad():
+                    R_s_old, R_t_old = self.get_relations(s_feat_old, t_feat_old, full_feat, B, T)
+                lt_loss = self.calculate_causal_loss(R_t_curr, R_t_old, self.temporal_relations)
+                ls_loss = self.calculate_causal_loss(R_s_curr, R_s_old, self.spatial_relations)
+                total_loss.append(self.miu_t * lt_loss) if lt_loss is not None else None
+                total_loss.append(self.miu_s * ls_loss) if ls_loss is not None else None
+
             loss = sum(total_loss)
 
         return CSTAOutput(
-            logits = final_logits,
+            logits = logits,
             loss = loss,
             ce_loss = ce_loss,
             distil_loss = distil_loss,
@@ -368,6 +443,6 @@ class CSTA(nn.Module):
             predictions = predictions,
             last_hidden_state = x,
             accuracy = accuracy,
-            spatial_relations=spatial_relations,
-            temporal_relations=temporal_relations
+            spatial_relations=R_s_curr,
+            temporal_relations=R_t_curr
         )
