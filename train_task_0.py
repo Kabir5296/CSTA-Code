@@ -1,24 +1,17 @@
+from warnings import filterwarnings
+filterwarnings("ignore")
 from src import (
     CSTA, get_config, get_video_dataset, set_all_seeds, train_epoch, evaluate
 )
 import torch
-from torch.utils.data import Dataset, ConcatDataset, DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader
 from accelerate import Accelerator
-import torch, os, random, accelerate, logging, datetime, argparse, copy
-from tqdm import tqdm
-import torch.nn as nn
-import numpy as np
-import torch.nn.functional as F
-import pandas as pd
-from torchvision.io import read_video
+import torch, os, logging, datetime, argparse
 import torch.optim as optim
-from warnings import filterwarnings
-import torchvision.transforms as transforms
-import math
 
 def main():
     parser = argparse.ArgumentParser(description="Train CSTA for task 0.")
-    parser.add_argument('--config', type=str, default="config/train_configs/UCF101/train_task0.yml", help="Config File Path for Training Task 0.")
+    parser.add_argument('--config', type=str, default="config/train_configs/dummy/train_task0.yml", help="Config File Path for Training Task 0.")
     parser.add_argument('--save_folder', type=str, default="model_save/test", help="Folder to save everything.")
     args = parser.parse_args()
     config_path = args.config
@@ -29,20 +22,22 @@ def main():
     
     # setup directory. work_dir -) a. config, b. logs, c. model
     save_model_config_dir = os.path.join(work_dir, "config")
-    log_dir = os.path.joing(work_dir, "logs")
+    log_dir = os.path.join(work_dir, "logs")
     model_save_dir = os.path.join(work_dir, "model")
     os.makedirs(save_model_config_dir, exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
-    os.makedirs(model_save_dir, exist_ok=True)
+    os.makedirs(os.path.join(model_save_dir, "checkpoints"), exist_ok=True)
     
     # setup logger
     logging.basicConfig(
         filename=os.path.join(log_dir, "train_task0.log"),
-        filemode="a",
+        filemode="w",
         level=logging.INFO,
     )
     logger = logging.getLogger(__name__)
-    logging.info(f"\n\nTraining for task 0 starting on: {datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')}\n\n")
+    logging.info(f"\n\nTraining for task 0 starting on: {datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')}\n")
+    logging.info(f"The config is being used from file: config_path")
+    logging.info(f"Model config: model_name: {config.model.model_name}, dim: {config.model.dim}, num_heads: {config.model.num_heads}, num_layers: {config.model.num_layers}")
     
     # create dataset
     dataset = get_video_dataset(config)
@@ -80,8 +75,8 @@ def main():
     model.prepare_architecture_for_current_task()
     
     # optimizer = optim.SGD(model.parameters(), lr = TrainingConfigs.learning_rate, weight_decay=TrainingConfigs.weight_decay)
-    optimizer = optim.AdamW(model.parameters(), lr = TrainingConfigs.learning_rate, betas = TrainingConfigs.adamw_betas, weight_decay=TrainingConfigs.weight_decay)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=TrainingConfigs.T_max, eta_min=TrainingConfigs.eta_min)
+    optimizer = optim.AdamW(model.parameters(), lr = float(TrainingConfigs.learning_rate), weight_decay = float(TrainingConfigs.weight_decay))
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=TrainingConfigs.num_training_epochs - TrainingConfigs.warmup_epochs, eta_min=float(TrainingConfigs.eta_min))
     
     accelerator = Accelerator()
     model, optimizer, train_dataloader, eval_dataloader, test_dataloader, scheduler = accelerator.prepare(
@@ -90,21 +85,31 @@ def main():
 
     best_loss = float('inf')
     best_acc = 0.0
+    early_stop_count = 0
+    
     for epoch in range(TrainingConfigs.num_training_epochs):
-        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch)
+        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad=TrainingConfigs.max_grad)
         eval_loss, eval_acc = evaluate(model, eval_dataloader, accelerator, epoch)
         
         if eval_loss < best_loss:
+            early_stop_count = 0
             best_loss = eval_loss
             accelerator.wait_for_everyone()
             unwrapped_model = accelerator.unwrap_model(model)
             torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'best_model_epoch_{epoch}.pth'))
         
         elif eval_acc > best_acc:
+            early_stop_count = 0
             best_acc = eval_acc
             accelerator.wait_for_everyone()
             unwrapped_model = accelerator.unwrap_model(model)
             torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'best_model_epoch_{epoch}.pth'))
+            
+        else:
+            early_stop_count += 1
+            if early_stop_count > TrainingConfigs.early_stop_patience:
+                logging.info(f"Stopping early after {early_stop_count} non-improvement.")
+                break
 
         if epoch > TrainingConfigs.warmup_epochs:
             scheduler.step()
@@ -122,5 +127,4 @@ def main():
     )
 
 if __name__ == "__main__":
-    filterwarnings("ignore")
     main()

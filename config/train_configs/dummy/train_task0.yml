@@ -1,0 +1,49 @@
+model:
+  model_name: csta
+  dim: 256
+  num_heads: 4
+  num_layers: 8
+
+data:
+  dataset_name: ucf101
+  num_frames: 8
+  img_size: 224
+  num_channels: 3
+  patch_size: 16
+  root_dir: DATA/UCF101
+  train_csv: DATA/UCF101/dummy/tasks/task_0/train.csv
+  test_csv: DATA/UCF101/dummy/tasks/task_0/test.csv
+  valid_csv: DATA/UCF101/dummy/tasks/task_0/valid.csv
+
+loss:
+  calculate_distil_loss: False
+  calculate_lt_ls_loss: False
+  count_relations: False
+  miu_d: 0.15
+  miu_t: 0.15
+  miu_s: 0.15
+  lambda_1: 0.2
+  K: 5
+  count_relations: False
+  temporal_relations_path: null
+  spatial_relations_path: null
+
+task:
+  task_n: 0
+  init_with_adapters: False
+  num_classes_t0: 51
+
+train:
+  random_seed: 42
+  num_training_epochs: 50
+  training_batch_size: 7
+  evaluation_batch_size: 7
+  dataloader_num_workers: 4
+  dataloader_pin_memory: False
+  dataloader_persistent_workers: False
+  learning_rate: 1e-4
+  weight_decay: 1e-4
+  eta_min: 1e-10
+  warmup_epochs: 10
+  max_grad: 1.5
+  early_stop_patience: 10

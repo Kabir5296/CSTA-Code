@@ -1,0 +1,38 @@
+model:
+  model_name: csta
+  dim: 10
+  num_layers: 3
+  num_heads: 2
+
+data:
+  dataset_name: ucf101
+  num_frames: 4
+  img_size: 4
+  num_channels: 3
+  patch_size: 4
+  root_dir: DATA/UCF101
+  train_csv: DATA/UCF101/dummy/tasks/task_1/train.csv
+  test_csv: DATA/UCF101/dummy/tasks/task_1/test.csv
+  valid_csv: DATA/UCF101/dummy/tasks/task_1/valid.csv
+
+loss:
+  calculate_distil_loss: False
+  calculate_lt_ls_loss: False
+  count_relations: False
+  miu_d: 0.1
+  miu_t: 0.1
+  miu_s: 0.1
+  lambda_1: 0.2
+  K: 5
+  count_relations: False
+  temporal_relations_path: config/relations/dummy/temporal_relations.json
+  spatial_relations_path: config/relations/dummy/spatial_relations.json
+
+task:
+  task_n: 1
+  init_with_adapters: False
+  num_classes_t0: 50
+  num_classes_new: 10
+
+checkpoints:
+  old_checkpoint: model_save/test/test_task0.pth

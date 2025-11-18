@@ -58,7 +58,7 @@ class VideoDataset(Dataset):
         self.img_size = config.data.img_size
         self.num_channels = config.data.num_channels
         self.patch_size = config.data.patch_size
-        self.root_dir = config.data.root_dir
+        self.root_path = config.data.root_dir
         self.label2id = label2id
         
         self.transform = transforms.Compose([
@@ -69,7 +69,7 @@ class VideoDataset(Dataset):
             # transforms.RandomErasing(0.1),
             ])
         self.df = pd.read_csv(csv_path)
-        logging.info(f"Dataset loaded for {self.dataset_name}/{split}.")
+        # logging.info(f"Dataset loaded for {self.dataset_name}/{split}.")
 
     def __len__(self):
         return len(self.df)
@@ -85,7 +85,7 @@ class VideoDataset(Dataset):
 
     @staticmethod
     def load_video(path):
-        video, _, _ = read_video(filename=path, output_format="TCHW")
+        video, _, _ = read_video(filename=path, output_format="TCHW", pts_unit='sec')
         return video.float()
     
     def __getitem__(self, index):
@@ -93,6 +93,10 @@ class VideoDataset(Dataset):
         label = self.df['label'][index]
 
         frames = self.sample_frames(self.load_video(video_path), num_frames=self.num_frames)
+        
+        if frames.shape[-1] == 3:   # if the channel dimension is at last
+            frames = frames.permute(0, 3, 1, 2)
+        
         processed_frames = torch.stack([
             self.transform(frame) for frame in frames
         ])
@@ -102,11 +106,13 @@ class VideoDataset(Dataset):
             "label": self.label2id[label],
         }
         
-def train_epoch(model, train_dataloader, optimizer, accelerator, epoch):
+def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad = 3):
     model.train()
-    running_loss = 0.0
+
     running_acc = 0.0
-    total_samples = 0
+    total_samples = num_steps_with_grad = 0
+    running_grad_norm = current_grad_norm = 0.0 
+    running_loss = running_ce_loss = running_distil_loss = running_lt_loss = running_ls_loss = 0.0
     
     progress_bar = tqdm(
         total=len(train_dataloader),
@@ -122,17 +128,34 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch):
             outputs = model(input_frames, labels)
             loss = outputs.loss
             
-            predictions = outputs.predictions.argmax(-1)
+            ce_loss = outputs.ce_loss
+            distil_loss = outputs.distil_loss
+            lt_loss = outputs.lt_loss
+            ls_loss = outputs.ls_loss
+            
+            predictions = outputs.predictions
             correct = (predictions == labels).sum().item()
             accuracy = correct / batch_size
-            # pdb.set_trace()
+
             accelerator.backward(loss)
+            
             if accelerator.sync_gradients:
-                accelerator.clip_grad_norm_(model.parameters(), 1.0)  # Add gradient clipping
+                grad_norm = accelerator.clip_grad_norm_(model.parameters(), float(max_grad))
+                if grad_norm is not None:
+                    current_grad_norm = grad_norm.item()
+                    running_grad_norm += current_grad_norm
+                    num_steps_with_grad += 1
+
             optimizer.step()
             optimizer.zero_grad()
         
         running_loss += loss.item() * batch_size
+        
+        running_ce_loss += ce_loss.item() * batch_size
+        running_distil_loss += distil_loss.item() * batch_size if distil_loss is not None else 0.0
+        running_lt_loss += lt_loss.item() * batch_size if lt_loss is not None else 0.0
+        running_ls_loss += ls_loss.item() * batch_size if ls_loss is not None else 0.0
+        
         running_acc += correct
         total_samples += batch_size
         
@@ -140,26 +163,40 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch):
         progress_bar.set_postfix({
             "loss": f"{loss.item():.4f}",
             "batch_acc": f"{accuracy:.4f}",
-            "running_acc": f"{running_acc/total_samples:.4f}"
+            "running_acc": f"{running_acc/total_samples:.4f}",
+            "grad": f"{current_grad_norm:.4f}",
         })
     
     avg_loss = running_loss / total_samples
     avg_acc = running_acc / total_samples
+    avg_grad = running_grad_norm / num_steps_with_grad if num_steps_with_grad > 0 else 0.0
+    
+    avg_ce_loss = running_ce_loss / total_samples
+    avg_distil_loss = running_distil_loss / total_samples
+    avg_lt_loss = running_lt_loss / total_samples
+    avg_ls_loss = running_ls_loss / total_samples
+    
     progress_bar.close()
     logging.info(
-        f"Epoch {epoch} - "
-        f"Average Loss: {avg_loss:.4f}, "
-        f"Average Accuracy: {avg_acc:.4f}, "
-        f"Samples: {total_samples}"
+        f"| Training Epoch {epoch}:: | "
+        f"| Average Loss: {avg_loss:.4f}, | "
+        f"| Average Accuracy: {avg_acc:.4f}, | "
+        f"| Avg Grad Norm: {avg_grad:.4f}, | "
+        f"| Samples: {total_samples} | "
+        f"| CE Loss: {avg_ce_loss:.4f} | "
+        f"| Distill Loss: {avg_distil_loss:.4f} | "
+        f"| Lt, Ls Loss: {avg_lt_loss:.4f}, {avg_ls_loss:.4f} | "
+        f"| Max Grad Limit: {max_grad} | " 
     )
     
     return avg_loss, avg_acc
 
 def evaluate(model, eval_dataloader, accelerator, epoch):
     model.eval()
-    running_loss = 0.0
+    
     running_acc = 0.0
     total_samples = 0
+    running_loss = running_ce_loss = running_distil_loss = running_lt_loss = running_ls_loss = 0.0
     
     progress_bar = tqdm(
         total=len(eval_dataloader),
@@ -176,11 +213,22 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
             outputs = model(input_frames, labels)
             loss = outputs.loss
             
-            predictions = outputs.predictions.argmax(-1)
+            ce_loss = outputs.ce_loss
+            distil_loss = outputs.distil_loss
+            lt_loss = outputs.lt_loss
+            ls_loss = outputs.ls_loss
+            
+            predictions = outputs.predictions
             correct = (predictions == labels).sum().item()
             accuracy = correct / batch_size
             
             running_loss += loss.item() * batch_size
+            
+            running_ce_loss += ce_loss.item() * batch_size
+            running_distil_loss += distil_loss.item() * batch_size if distil_loss is not None else 0.0
+            running_lt_loss += lt_loss.item() * batch_size if lt_loss is not None else 0.0
+            running_ls_loss += ls_loss.item() * batch_size if ls_loss is not None else 0.0
+            
             running_acc += correct
             total_samples += batch_size
             
@@ -193,12 +241,19 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
     
     avg_loss = running_loss / total_samples
     avg_acc = running_acc / total_samples
+    avg_ce_loss = running_ce_loss / total_samples
+    avg_distil_loss = running_distil_loss / total_samples
+    avg_lt_loss = running_lt_loss / total_samples
+    avg_ls_loss = running_ls_loss / total_samples
     progress_bar.close()
     logging.info(
-        f"Evaluation Epoch {epoch} - "
-        f"Average Loss: {avg_loss:.4f}, "
-        f"Average Accuracy: {avg_acc:.4f}, "
-        f"Samples: {total_samples}"
+        f"| Evaluation Epoch {epoch}:: | "
+        f"| Average Loss: {avg_loss:.4f}, | "
+        f"| Average Accuracy: {avg_acc:.4f}, | "
+        f"| Samples: {total_samples} | "
+        f"| CE Loss: {avg_ce_loss:.4f} | "
+        f"| Distill Loss: {avg_distil_loss:.4f} | "
+        f"| Lt, Ls Loss: {avg_lt_loss:.4f}, {avg_ls_loss:.4f} | "
     )
     
     return avg_loss, avg_acc

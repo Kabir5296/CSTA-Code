@@ -104,6 +104,11 @@ class CSTA(nn.Module):
         # keeping a list of classifiers
         self.classifiers = nn.ModuleList([nn.Linear(self.dim, self.num_classes_t0)])
 
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
+        nn.init.trunc_normal_(self.temporal_pos_embed, std=0.02)
+        nn.init.trunc_normal_(self.spatial_pos_embed, std=0.02)
+        self.apply(self._init_weights)
+        
         # add the first adapter to all the timesformer blocks
         if init_with_adapters:
             self.add_one_adapter_per_block()
@@ -119,7 +124,20 @@ class CSTA(nn.Module):
         else:
             self.temporal_relations = None
             self.spatial_relations = None
-
+    
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.trunc_normal_(m.weight, std=0.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+    
     def get_model_attributes(self):
         total_blocks = len(self.blocks)
         total_temporal_adapters = total_spatial_adapters = 0
@@ -461,7 +479,8 @@ class CSTA(nn.Module):
         logits, distil_loss, full_feat, t_feat_curr, s_feat_curr, t_feat_old, s_feat_old = self.vanilla_forward(x, B, T)
         if distil_loss is not None:
             del self.temporal_cross_attention_old, self.spatial_cross_attention_old
-        predictions = torch.argmax(logits, dim=-1)
+
+        predictions = torch.argmax(logits.softmax(-1), dim=-1)
 
         R_s_curr, R_t_curr = self.get_relations(s_feat_curr, t_feat_curr, full_feat, B, T)
                 
