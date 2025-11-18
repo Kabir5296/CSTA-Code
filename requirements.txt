@@ -1,0 +1,11 @@
+torch
+numpy
+pandas
+torchvision
+av
+datasets
+kaggle
+kagglehub
+accelerate
+einops
+pyyaml
