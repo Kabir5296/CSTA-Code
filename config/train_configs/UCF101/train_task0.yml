@@ -35,7 +35,7 @@ task:
 
 train:
   random_seed: 42
-  num_training_epochs: 10
+  num_training_epochs: 50
   training_batch_size: 3
   evaluation_batch_size: 3
   dataloader_num_workers: 4
