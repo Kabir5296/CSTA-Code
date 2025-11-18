@@ -3,10 +3,9 @@ filterwarnings("ignore")
 from src import (
     CSTA, get_config, get_video_dataset, set_all_seeds, train_epoch, evaluate
 )
-import torch
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
-import torch, os, logging, datetime, argparse
+import torch, os, logging, datetime, argparse, shutil
 import torch.optim as optim
 
 def main():
@@ -27,6 +26,9 @@ def main():
     os.makedirs(save_model_config_dir, exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(os.path.join(model_save_dir, "checkpoints"), exist_ok=True)
+    
+    # copy the config to config folder
+    shutil.copyfile(config_path, f"{save_model_config_dir}/train_config.yml")
     
     # setup logger
     logging.basicConfig(
