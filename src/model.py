@@ -1,4 +1,4 @@
-import torch, pdb, json, warnings
+import torch, pdb, json, warnings, logging
 import torch.nn as nn
 import torch.nn.functional as F
 from .model_utils import (
@@ -168,8 +168,8 @@ class CSTA(nn.Module):
         expected_count = self.task_n + 1
         if (current_attrs["adapters_per_block"] == (expected_count-1) and 
             current_attrs["total_classifiers"] == expected_count):
-            print(f"Architecture already matches Task {self.task_n}")
-            print(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
+            logging.info(f"Architecture already matches Task {self.task_n}")
+            logging.info(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
             return
         
         if self.task_n > 0:
@@ -181,17 +181,17 @@ class CSTA(nn.Module):
         if self.task_n == 0:
             if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
                 checkpoint_path_to_load = self.config.checkpoints.task_0
-                print(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
+                logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
             else:
-                print("Task 0: Training from scratch. No checkpoint provided.")
+                logging.info("Task 0: Training from scratch. No checkpoint provided.")
         else:
             prev_task_n = self.task_n - 1
             checkpoint_path_to_load = getattr(self.config.checkpoints, f"old_checkpoint", None)
 
             if checkpoint_path_to_load is None:
-                print(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
+                logging.info(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
                 raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
-            print(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
+            logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
 
         if checkpoint_path_to_load:
             self.load_weights(checkpoint_path_to_load)
@@ -199,12 +199,12 @@ class CSTA(nn.Module):
             pass 
 
         if self.task_n > 0:
-            print(f"Task {self.task_n}: Freezing all parameters except for the new components.")
+            logging.info(f"Task {self.task_n}: Freezing all parameters except for the new components.")
             self.freeze_all_but_last()
 
         # Final check
         self.model_attributes = self.get_model_attributes()
-        print(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
+        logging.info(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
 
     def freeze_all_but_last(self):
         for classifier in self.classifiers[:-1]:
