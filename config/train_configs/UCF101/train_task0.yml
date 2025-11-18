@@ -13,7 +13,7 @@ data:
   root_dir: DATA/UCF101
   train_csv: DATA/UCF101/tasks/task_0/train.csv
   test_csv: DATA/UCF101/tasks/task_0/test.csv
-  valid_csv: DATA/UCF101/tasks/task_0/valid.csv
+  valid_csv: DATA/UCF101/tasks/task_0/val.csv
 
 loss:
   calculate_distil_loss: False
@@ -36,8 +36,8 @@ task:
 train:
   random_seed: 42
   num_training_epochs: 10
-  training_batch_size: 7
-  evaluation_batch_size: 7
+  training_batch_size: 3
+  evaluation_batch_size: 3
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
