@@ -127,6 +127,9 @@ def main():
         f"Average Loss: {eval_loss:.4f}, "
         f"Average Accuracy: {eval_acc:.4f}, "
     )
+    
+    # # Save feature banks
+    # model.save_feature_banks(train_dataloader, accelerator, f"{work_dir}/memory_bank")
 
 if __name__ == "__main__":
     main()

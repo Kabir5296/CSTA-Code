@@ -23,6 +23,7 @@ loss:
   miu_t: 0.15
   miu_s: 0.15
   lambda_1: 0.2
+  lambda_2: 0.2
   K: 5
   count_relations: False
   temporal_relations_path: null
