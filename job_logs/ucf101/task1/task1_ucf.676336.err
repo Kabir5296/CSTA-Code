@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/fine_tune.py", line 149, in <module>
+    main()
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/fine_tune.py", line 78, in main
+    model.prepare_architecture_for_current_task()
+UnboundLocalError: local variable 'model' referenced before assignment

@@ -75,10 +75,10 @@ def main():
     
     # load old model first
     model_old= CSTA(config_file=config.checkpoints.old_config_path)
-    model.prepare_architecture_for_current_task()
+    model_old.prepare_architecture_for_current_task()
     model_old.load_weights(config.checkpoints.old_checkpoint)
     accelerator = Accelerator()
-    model, train_dataloader= accelerator.prepare(model, train_dataloader)
+    model_old, train_dataloader= accelerator.prepare(model_old, train_dataloader)
     model_old.save_feature_banks(train_dataloader, accelerator, memory_bank_dir)
 
     # check if the memory bank has all the files needed
