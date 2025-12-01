@@ -37,9 +37,14 @@ def get_video_dataset(config):
     all_labels = sorted(train['label'].unique().tolist())
     id2label = {}
     label2id = {}
-    for index, label in enumerate(all_labels):
-        id2label[index] = label
-        label2id[label] = index
+    if config.task.task_n == 0:
+        for index, label in enumerate(all_labels):
+            id2label[index] = label
+            label2id[label] = index
+    elif config.task.task_n == 1:
+        for index, label in enumerate(all_labels):
+            id2label[index + config.task.num_classes_t0] = label
+            label2id[label] = index + config.task.num_classes_t0
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
@@ -257,3 +262,17 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
     )
     
     return avg_loss, avg_acc
+
+def get_model_info(model):
+    # 1. Model Parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # 2. Model Size (Theoretical)
+    param_size = sum(p.numel() * p.element_size() for p in model.parameters())
+    buffer_size = sum(b.numel() * b.element_size() for b in model.buffers())
+    size_mb = (param_size + buffer_size) / 1024**2
+    
+    print(f"Total Params:     {total_params / 1e6:.2f}M")
+    print(f"Trainable Params: {trainable_params / 1e6:.2f}M")
+    print(f"Model Size (MB):  {size_mb:.2f} MB")
