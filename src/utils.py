@@ -57,6 +57,56 @@ def get_video_dataset(config):
         "id2label" : id2label,
         "label2id" : label2id,
     }
+    
+def get_eval_dataset(config):
+    current_task = config.task.task_n
+    id2label = {}
+    label2id = {}
+    if current_task == 2:
+        task_0_labels = pd.read_csv(config.data.task_0.train_csv).label.unique().tolist()
+        task_1_labels = pd.read_csv(config.data.task_1.train_csv).label.unique().tolist()
+        task_2_labels = pd.read_csv(config.data.task_2.train_csv).label.unique().tolist()
+        all_labels = sorted(task_0_labels)+sorted(task_1_labels)+sorted(task_2_labels)
+        
+        for index, label in enumerate(all_labels):
+            id2label[index] = label
+            label2id[label] = index
+            
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 1:
+        task_0_labels = pd.read_csv(config.data.task_0.train_csv).label.unique().tolist()
+        task_1_labels = pd.read_csv(config.data.task_1.train_csv).label.unique().tolist()
+        all_labels = sorted(task_0_labels)+sorted(task_1_labels)
+        
+        for index, label in enumerate(all_labels):
+            id2label[index] = label
+            label2id[label] = index
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 0:
+        all_labels = sorted(pd.read_csv(config.data.task_0.train_csv).label.unique().tolist())
+        for index, label in enumerate(all_labels):
+            id2label[index] = label
+            label2id[label] = index
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
 
 class VideoDataset(Dataset):
     def __init__(self, config, csv_path, label2id ,split="train"):
@@ -263,6 +313,57 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
         f"| CE Loss: {avg_ce_loss:.4f} | "
         f"| Distill Loss: {avg_distil_loss:.4f} | "
         f"| Lt, Ls Loss: {avg_lt_loss:.4f}, {avg_ls_loss:.4f} | "
+    )
+    
+    return avg_loss, avg_acc
+
+def test(model, eval_dataloader, accelerator, task_n):
+    model.eval()
+    
+    running_acc = 0.0
+    total_samples = 0
+    running_loss = running_ce_loss = running_distil_loss = running_lt_loss = running_ls_loss = 0.0
+    
+    progress_bar = tqdm(
+        total=len(eval_dataloader),
+        disable=not accelerator.is_local_main_process,
+        desc=f"Test on task: {task_n}"
+    )
+    
+    with torch.no_grad():
+        for batch in eval_dataloader:
+            input_frames = batch["input_frames"]
+            labels = batch["label"]
+            batch_size = labels.size(0)
+
+            outputs = model(input_frames, labels)
+            loss = outputs.loss
+            
+            predictions = outputs.predictions
+            correct = (predictions == labels).sum().item()
+            accuracy = correct / batch_size
+            
+            running_loss += loss.item() * batch_size
+            
+            running_acc += correct
+            total_samples += batch_size
+            
+            progress_bar.update(1)
+            progress_bar.set_postfix({
+                "loss": f"{loss.item():.4f}",
+                "batch_acc": f"{accuracy:.4f}",
+                "running_acc": f"{running_acc/total_samples:.4f}"
+            })
+    
+    avg_loss = running_loss / total_samples
+    avg_acc = running_acc / total_samples
+
+    progress_bar.close()
+    logging.info(
+        f"| Task: {task_n} | "
+        f"| Average Loss: {avg_loss:.4f}, | "
+        f"| Average Accuracy: {avg_acc:.4f}, | "
+        f"| Samples: {total_samples} | "
     )
     
     return avg_loss, avg_acc

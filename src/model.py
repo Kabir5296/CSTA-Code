@@ -190,6 +190,7 @@ class CSTA(nn.Module):
         self.model_attributes = self.get_model_attributes()
 
     def load_weights(self, ste_dict_path):
+        logging.info(f"Loading weights from: {ste_dict_path}")
         state_dict = load_model_weights(ste_dict_path)
         self.load_state_dict(state_dict, strict=False)
 
