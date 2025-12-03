@@ -76,6 +76,7 @@ def main():
     # load old model first
     model_old= CSTA(config_file=config.checkpoints.old_config_path)
     model_old.prepare_architecture_for_current_task()
+    logging.info(f"\n\nDO NOT WORRY ABOUT THE CHECKPOINT LOADING. \nWe're now loading the actual checkpoint from {config.checkpoints.old_checkpoint}")
     model_old.load_weights(config.checkpoints.old_checkpoint)
     accelerator = Accelerator()
     model_old, train_dataloader= accelerator.prepare(model_old, train_dataloader)

@@ -193,7 +193,7 @@ class CSTA(nn.Module):
         state_dict = load_model_weights(ste_dict_path)
         self.load_state_dict(state_dict, strict=False)
 
-    def prepare_architecture_for_current_task(self):
+    def prepare_architecture_for_current_task(self, checkpoint_path_to_load=None):
         current_attrs = self.get_model_attributes()
         expected_count = self.task_n + 1
         if (current_attrs["adapters_per_block"] == (expected_count-1) and 
@@ -207,26 +207,29 @@ class CSTA(nn.Module):
                 self.add_one_adapter_per_block()
                 self.add_one_new_classifier(self.config.task.num_classes_new)
 
-        checkpoint_path_to_load = None
-        if self.task_n == 0:
-            if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
-                checkpoint_path_to_load = self.config.checkpoints.task_0
-                logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
+        if checkpoint_path_to_load == None:
+            if self.task_n == 0:
+                if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
+                    checkpoint_path_to_load = self.config.checkpoints.task_0
+                    logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
+                else:
+                    logging.info("Task 0: Training from scratch. No checkpoint provided.")
             else:
-                logging.info("Task 0: Training from scratch. No checkpoint provided.")
+                prev_task_n = self.task_n - 1
+                checkpoint_path_to_load = getattr(self.config.checkpoints, f"old_checkpoint", None)
+
+                if checkpoint_path_to_load is None:
+                    logging.info(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
+                    raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
+                logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
+
+            if checkpoint_path_to_load:
+                self.load_weights(checkpoint_path_to_load)
+            else:
+                pass
         else:
-            prev_task_n = self.task_n - 1
-            checkpoint_path_to_load = getattr(self.config.checkpoints, f"old_checkpoint", None)
-
-            if checkpoint_path_to_load is None:
-                logging.info(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
-                raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
-            logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
-
-        if checkpoint_path_to_load:
+            logging.info(f"Loading given checkpoint from: {checkpoint_path_to_load}")
             self.load_weights(checkpoint_path_to_load)
-        else:
-            pass 
 
         if self.task_n > 0:
             logging.info(f"Task {self.task_n}: Freezing all parameters except for the new components.")
