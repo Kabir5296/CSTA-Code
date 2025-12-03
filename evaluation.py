@@ -91,7 +91,7 @@ def main():
     elif config.task.task_n == 1:
         # load test datasets (hopefully i didn't mess up the labels)
         dataset=get_eval_dataset(config)
-        task_0_test, task_1_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
+        task_0_test, task_1_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['id2label'], dataset['label2id']
         
         task_0_test_datloader = DataLoader(task_0_test, 
                                     batch_size=EvalConfig.test_batch_size, 
@@ -125,7 +125,7 @@ def main():
     elif config.task.task_n == 0:
         # load test datasets (hopefully i didn't mess up the labels)
         dataset=get_eval_dataset(config)
-        task_0_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
+        task_0_test, id2label, label2id = dataset['task_0_test'], dataset['id2label'], dataset['label2id']
         
         task_0_test_datloader = DataLoader(task_0_test, 
                                     batch_size=EvalConfig.test_batch_size, 
