@@ -1,0 +1,32 @@
+Extracting:   0%|          | 0/24 [00:00<?, ?it/s]Extracting:   0%|          | 0/24 [00:14<?, ?it/s]
+Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/fine_tune.py", line 149, in <module>
+    main()
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/fine_tune.py", line 82, in main
+    model_old.save_feature_banks(train_dataloader, accelerator, memory_bank_dir)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/model.py", line 572, in save_feature_banks
+    for batch in tqdm(dataloader, disable=not accelerator.is_local_main_process, desc="Extracting"):
+  File "/home/ak3535/.conda/envs/ds_project/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/ak3535/.conda/envs/ds_project/lib/python3.10/site-packages/accelerate/data_loader.py", line 567, in __iter__
+    current_batch = next(dataloader_iter)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 733, in __next__
+    data = self._next_data()
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1515, in _next_data
+    return self._process_data(data, worker_id)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1550, in _process_data
+    data.reraise()
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/_utils.py", line 750, in reraise
+    raise exception
+KeyError: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/utils.py", line 111, in __getitem__
+    "label": self.label2id[label],
+KeyError: 'RopeClimbing'
+

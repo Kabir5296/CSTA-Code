@@ -45,6 +45,10 @@ def get_video_dataset(config):
         for index, label in enumerate(all_labels):
             id2label[index + config.task.num_classes_t0] = label
             label2id[label] = index + config.task.num_classes_t0
+    elif config.task.task_n == 2:
+        for index, label in enumerate(all_labels):
+            id2label[index + config.task.num_classes_t0 + 10] = label
+            label2id[label] = index + config.task.num_classes_t0 + 10
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
