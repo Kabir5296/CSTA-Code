@@ -52,21 +52,21 @@ def main():
         task_0_test, task_1_test, task_2_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
         
         task_0_test_datloader = DataLoader(task_0_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
                                     num_workers=EvalConfig.dataloader_num_workers,
                                     )
         task_1_test_datloader = DataLoader(task_1_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
                                     num_workers=EvalConfig.dataloader_num_workers,
                                     )
         task_2_test_datloader = DataLoader(task_2_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
@@ -78,9 +78,9 @@ def main():
                 model, task_0_test_datloader, task_1_test_datloader, task_2_test_datloader
             )
         
-        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task=0)
-        _, task_1_acc = test(model, task_1_test_datloader, accelerator, task=1)
-        _, task_2_acc = test(model, task_2_test_datloader, accelerator, task=2)
+        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task_n=0)
+        _, task_1_acc = test(model, task_1_test_datloader, accelerator, task_n=1)
+        _, task_2_acc = test(model, task_2_test_datloader, accelerator, task_n=2)
         
         logging.info(f"\n\n===========================================================================================================")
         logging.info(f"Model Used: {config.checkpoints.current_checkpoint}")
@@ -94,14 +94,14 @@ def main():
         task_0_test, task_1_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
         
         task_0_test_datloader = DataLoader(task_0_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
                                     num_workers=EvalConfig.dataloader_num_workers,
                                     )
         task_1_test_datloader = DataLoader(task_1_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
@@ -113,8 +113,8 @@ def main():
                 model, task_0_test_datloader, task_1_test_datloader
             )
         
-        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task=0)
-        _, task_1_acc = test(model, task_1_test_datloader, accelerator, task=1)
+        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task_n=0)
+        _, task_1_acc = test(model, task_1_test_datloader, accelerator, task_n=1)
         
         logging.info(f"\n\n=======================================================================================")
         logging.info(f"Model Used: {config.checkpoints.current_checkpoint}")
@@ -128,7 +128,7 @@ def main():
         task_0_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
         
         task_0_test_datloader = DataLoader(task_0_test, 
-                                    batch_size=EvalConfig.evaluation_batch_size, 
+                                    batch_size=EvalConfig.test_batch_size, 
                                     shuffle=False,
                                     pin_memory=EvalConfig.dataloader_pin_memory, 
                                     persistent_workers=EvalConfig.dataloader_persistent_workers,
@@ -140,7 +140,7 @@ def main():
                 model, task_0_test_datloader
             )
         
-        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task=0)
+        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task_n=0)
         
         logging.info(f"\n\n=======================================================================================")
         logging.info(f"Model Used: {config.checkpoints.current_checkpoint}")
