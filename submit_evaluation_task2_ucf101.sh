@@ -20,4 +20,4 @@ OUTPUT_FOLDER="model_save/smaller_model"
 
 python evaluation.py \
     --config "$EVAL_CONFIG_FILE" \
-    --save_folder "$OUTPUT_FOLDER"
+    --save_results "$OUTPUT_FOLDER"
