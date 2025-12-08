@@ -28,7 +28,7 @@ def set_all_seeds(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def get_video_dataset(config):
+def get_video_dataset(config, task_n=None):
     training_csv_path = config.data.train_csv
     valid_csv_path = config.data.valid_csv
     test_csv_path = config.data.test_csv
@@ -37,15 +37,19 @@ def get_video_dataset(config):
     all_labels = sorted(train['label'].unique().tolist())
     id2label = {}
     label2id = {}
-    if config.task.task_n == 0:
+    
+    if task_n is None:
+        task_n = config.task.task_n
+        
+    if task_n == 0:
         for index, label in enumerate(all_labels):
             id2label[index] = label
             label2id[label] = index
-    elif config.task.task_n == 1:
+    elif task_n == 1:
         for index, label in enumerate(all_labels):
             id2label[index + config.task.num_classes_t0] = label
             label2id[label] = index + config.task.num_classes_t0
-    elif config.task.task_n == 2:
+    elif task_n == 2:
         for index, label in enumerate(all_labels):
             id2label[index + config.task.num_classes_t0 + 10] = label
             label2id[label] = index + config.task.num_classes_t0 + 10
@@ -54,6 +58,36 @@ def get_video_dataset(config):
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
         "test" : VideoDataset(config=config, csv_path=test_csv_path, label2id=label2id, split="test"),
         "valid" : VideoDataset(config=config, csv_path=valid_csv_path, label2id=label2id, split="valid"),
+        "id2label" : id2label,
+        "label2id" : label2id,
+    }
+    
+def get_video_dataset_for_ft(config, task_n=None):
+    training_csv_path = config.fine_tune.train_data
+    train = pd.read_csv(training_csv_path)
+
+    all_labels = sorted(train['label'].unique().tolist())
+    id2label = {}
+    label2id = {}
+    
+    if task_n is None:
+        task_n = config.fine_tune.task_n_ft
+        
+    if task_n == 0:
+        for index, label in enumerate(all_labels):
+            id2label[index] = label
+            label2id[label] = index
+    elif task_n == 1:
+        for index, label in enumerate(all_labels):
+            id2label[index + config.task.num_classes_t0] = label
+            label2id[label] = index + config.task.num_classes_t0
+    elif task_n == 2:
+        for index, label in enumerate(all_labels):
+            id2label[index + config.task.num_classes_t0 + 10] = label
+            label2id[label] = index + config.task.num_classes_t0 + 10
+    
+    return {
+        "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
         "id2label" : id2label,
         "label2id" : label2id,
     }

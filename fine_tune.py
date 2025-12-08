@@ -1,7 +1,7 @@
 from warnings import filterwarnings
 filterwarnings("ignore")
 from src import (
-    CSTA, get_config, get_video_dataset, set_all_seeds, train_epoch, evaluate
+    CSTA, get_config, get_video_dataset, set_all_seeds, train_epoch, evaluate, get_video_dataset_for_ft
 )
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
@@ -145,6 +145,34 @@ def main():
         f"Average Loss: {eval_loss:.4f}, "
         f"Average Accuracy: {eval_acc:.4f}, "
     )
+
+    if config.fine_tune.fine_tune:
+        task_n = config.fine_tune.task_n_ft
+        logging.info(f"\n\nStarting Fine-tuning for task {task_n}.\n")
+        dataset = get_video_dataset_for_ft(config)
+        ft_train_dataset, _,_  = dataset["train"], dataset["id2label"], dataset["label2id"]
+        
+        train_dataloader = DataLoader(ft_train_dataset, 
+                            batch_size=TrainingConfigs.training_batch_size, 
+                            shuffle=True, 
+                            pin_memory=TrainingConfigs.dataloader_pin_memory, 
+                            persistent_workers=TrainingConfigs.dataloader_persistent_workers,
+                            num_workers=TrainingConfigs.dataloader_num_workers,
+                            )
+
+        accelerator = Accelerator()
+        model, optimizer, train_dataloader, scheduler = accelerator.prepare(
+            model, optimizer, train_dataloader, scheduler
+        )
+
+        for epoch in range(config.fine_tune.ft_epochs):
+            train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad=TrainingConfigs.max_grad)
+            scheduler.step()
+
+        accelerator.wait_for_everyone()
+        accelerator.end_training()
+        unwrapped_model = accelerator.unwrap_model(model)
+        torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model_after_ft.pth'))
 
 if __name__ == "__main__":
     main()

@@ -53,4 +53,10 @@ train:
 
 checkpoints:
   old_config_path: model_save/smaller_model/ucf101/task_1/config/train_config.yml
-  old_checkpoint: model_save/smaller_model/ucf101/task_1/model/checkpoints/best_model_epoch_47.pth
+  old_checkpoint: model_save/smaller_model/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+
+fine_tune:
+  fine_tune: True
+  train_data: DATA/UCF101/tasks/task_1/fine_tune.csv
+  task_n_ft: 1
+  ft_epochs: 10

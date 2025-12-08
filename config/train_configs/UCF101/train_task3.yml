@@ -31,4 +31,11 @@ task:
   num_classes_new: 10
 
 checkpoints:
-  old_checkpoint: model_save/test/test_task2.pth
+  old_config_path: model_save/smaller_model/ucf101/task_2/config/train_config.yml
+  old_checkpoint: model_save/smaller_model/ucf101/task_2/model/checkpoints/final_model_after_ft.pth
+
+fine_tune:
+  fine_tune: True
+  train_data: DATA/UCF101/tasks/task_2/fine_tune.csv
+  task_n_ft: 2
+  ft_epochs: 10

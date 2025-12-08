@@ -48,3 +48,6 @@ train:
   warmup_epochs: 2
   max_grad: 1.5
   early_stop_patience: 5
+
+fine_tune:
+  fine_tune: False
