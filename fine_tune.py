@@ -174,5 +174,12 @@ def main():
         unwrapped_model = accelerator.unwrap_model(model)
         torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model_after_ft.pth'))
 
+        eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
+        logging.info(
+            f"Test Performance after further FT: "
+            f"Average Loss: {eval_loss:.4f}, "
+            f"Average Accuracy: {eval_acc:.4f}, "
+        )
+
 if __name__ == "__main__":
     main()

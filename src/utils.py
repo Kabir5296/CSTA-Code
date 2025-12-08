@@ -12,7 +12,7 @@ def get_config(file_name):
         config=yaml.safe_load(f)
     return dict_to_object(config)
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torchvision import transforms
 import pandas as pd
 import torch, os, json, random, logging
@@ -45,18 +45,36 @@ def get_video_dataset(config, task_n=None):
         "label2id" : label2id,
     }
     
-def get_video_dataset_for_ft(config, task_n=None):
-    training_csv_path = config.fine_tune.train_data
-
+def get_video_dataset_for_ft(config):
+    ft_task_n = config.fine_tune.task_n_ft
+    
     with open(config.data.label2id_path, "r") as f:
         label2id = json.load(f)
     id2label = {v: k for k, v in label2id.items()}
     
-    return {
-        "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
-        "id2label" : id2label,
-        "label2id" : label2id,
-    }
+    if ft_task_n == 0:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif ft_task_n == 1:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1   
+        training_csv_path_2 = config.fine_tune.train_data_2      
+        
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_2, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
     
 def get_eval_dataset(config):
     current_task = config.task.task_n

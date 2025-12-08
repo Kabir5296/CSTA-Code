@@ -16,7 +16,7 @@ conda activate ds_project
 module load CUDA
 
 EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2.yml"
-OUTPUT_FOLDER="model_save/smaller_model"
+OUTPUT_FOLDER="model_save/new_trial"
 
 python evaluation.py \
     --config "$EVAL_CONFIG_FILE" \

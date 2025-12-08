@@ -39,7 +39,7 @@ task:
 
 train:
   random_seed: 42
-  num_training_epochs: 50
+  num_training_epochs: 30
   training_batch_size: 32
   evaluation_batch_size: 32
   dataloader_num_workers: 4
@@ -48,7 +48,7 @@ train:
   learning_rate: 1e-4
   weight_decay: 1e-4
   eta_min: 1e-10
-  warmup_epochs: 2
+  warmup_epochs: 5
   max_grad: 1.5
   early_stop_patience: 5
 
@@ -58,6 +58,7 @@ checkpoints:
 
 fine_tune:
   fine_tune: True
-  train_data: DATA/UCF101/tasks/task_0/fine_tune.csv
+  train_data_0: DATA/UCF101/tasks/task_0/fine_tune.csv
+  train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
   task_n_ft: 0
   ft_epochs: 10
