@@ -14,6 +14,7 @@ data:
   train_csv: DATA/UCF101/tasks/task_0/train.csv
   test_csv: DATA/UCF101/tasks/task_0/test.csv
   valid_csv: DATA/UCF101/tasks/task_0/val.csv
+  label2id_path: DATA/UCF101/tasks/label2id.json
 
 loss:
   calculate_distil_loss: False
@@ -42,10 +43,10 @@ train:
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
-  learning_rate: 1e-4
+  learning_rate: 1e-5
   weight_decay: 1e-4
   eta_min: 1e-10
-  warmup_epochs: 2
+  warmup_epochs: 5
   max_grad: 1.5
   early_stop_patience: 5
 

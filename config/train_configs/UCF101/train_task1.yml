@@ -14,6 +14,7 @@ data:
   train_csv: DATA/UCF101/tasks/task_1/train.csv
   test_csv: DATA/UCF101/tasks/task_1/test.csv
   valid_csv: DATA/UCF101/tasks/task_1/val.csv
+  label2id_path: DATA/UCF101/tasks/label2id.json
 
 loss:
   calculate_distil_loss: True
@@ -25,10 +26,10 @@ loss:
   lambda_1: 0.2
   lambda_2: 0.2
   K: 5
-  temporal_features_path: model_save/smaller_model/bank/task_0_model/temporal_feats_task0.pt
-  spatial_features_path: model_save/smaller_model/bank/task_0_model/spatial_feats_task0.pt
-  temporal_relations_path: model_save/smaller_model/bank/task_0_model/temporal_relations_task0.json
-  spatial_relations_path: model_save/smaller_model/bank/task_0_model/spatial_relations_task0.json
+  temporal_features_path: model_save/new_trial/bank/task_0_model/temporal_feats_task0.pt
+  spatial_features_path: model_save/new_trial/bank/task_0_model/spatial_feats_task0.pt
+  temporal_relations_path: model_save/new_trial/bank/task_0_model/temporal_relations_task0.json
+  spatial_relations_path: model_save/new_trial/bank/task_0_model/spatial_relations_task0.json
 
 task:
   task_n: 1
@@ -52,8 +53,8 @@ train:
   early_stop_patience: 5
 
 checkpoints:
-  old_config_path: model_save/smaller_model/ucf101/task_0/config/train_config.yml
-  old_checkpoint: model_save/smaller_model/ucf101/task_0/model/checkpoints/final_model.pth
+  old_config_path: model_save/new_trial/ucf101/task_0/config/train_config.yml
+  old_checkpoint: model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
 
 fine_tune:
   fine_tune: True

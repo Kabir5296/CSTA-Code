@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:a100_10g:1
 #SBATCH --account=2025-fall-ds-677-amr239-ak3535
 #SBATCH --qos=course
-#SBATCH --time=70:00:00
+#SBATCH --time=8:00:00
 #SBATCH --output=./job_logs/ucf101/task1/%x.%j.out
 #SBATCH --error=./job_logs/ucf101/task1/%x.%j.err
 #SBATCH --ntasks=1
@@ -16,7 +16,7 @@ conda activate ds_project
 module load CUDA
 
 TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1.yml"
-OUTPUT_FOLDER="model_save/smaller_model"
+OUTPUT_FOLDER="model_save/new_trial"
 
 python fine_tune.py \
     --config "$TRAIN_CONFIG_FILE" \

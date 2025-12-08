@@ -15,7 +15,7 @@ def get_config(file_name):
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import pandas as pd
-import torch, os, random, logging
+import torch, os, json, random, logging
 import numpy as np
 from tqdm import tqdm
 from torchvision.io import read_video
@@ -32,27 +32,10 @@ def get_video_dataset(config, task_n=None):
     training_csv_path = config.data.train_csv
     valid_csv_path = config.data.valid_csv
     test_csv_path = config.data.test_csv
-    train = pd.read_csv(training_csv_path)
 
-    all_labels = sorted(train['label'].unique().tolist())
-    id2label = {}
-    label2id = {}
-    
-    if task_n is None:
-        task_n = config.task.task_n
-        
-    if task_n == 0:
-        for index, label in enumerate(all_labels):
-            id2label[index] = label
-            label2id[label] = index
-    elif task_n == 1:
-        for index, label in enumerate(all_labels):
-            id2label[index + config.task.num_classes_t0] = label
-            label2id[label] = index + config.task.num_classes_t0
-    elif task_n == 2:
-        for index, label in enumerate(all_labels):
-            id2label[index + config.task.num_classes_t0 + 10] = label
-            label2id[label] = index + config.task.num_classes_t0 + 10
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
@@ -64,27 +47,10 @@ def get_video_dataset(config, task_n=None):
     
 def get_video_dataset_for_ft(config, task_n=None):
     training_csv_path = config.fine_tune.train_data
-    train = pd.read_csv(training_csv_path)
 
-    all_labels = sorted(train['label'].unique().tolist())
-    id2label = {}
-    label2id = {}
-    
-    if task_n is None:
-        task_n = config.fine_tune.task_n_ft
-        
-    if task_n == 0:
-        for index, label in enumerate(all_labels):
-            id2label[index] = label
-            label2id[label] = index
-    elif task_n == 1:
-        for index, label in enumerate(all_labels):
-            id2label[index + config.task.num_classes_t0] = label
-            label2id[label] = index + config.task.num_classes_t0
-    elif task_n == 2:
-        for index, label in enumerate(all_labels):
-            id2label[index + config.task.num_classes_t0 + 10] = label
-            label2id[label] = index + config.task.num_classes_t0 + 10
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
@@ -94,18 +60,12 @@ def get_video_dataset_for_ft(config, task_n=None):
     
 def get_eval_dataset(config):
     current_task = config.task.task_n
-    id2label = {}
-    label2id = {}
+
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
+    
     if current_task == 2:
-        task_0_labels = pd.read_csv(config.data.task_0.train_csv).label.unique().tolist()
-        task_1_labels = pd.read_csv(config.data.task_1.train_csv).label.unique().tolist()
-        task_2_labels = pd.read_csv(config.data.task_2.train_csv).label.unique().tolist()
-        all_labels = sorted(task_0_labels)+sorted(task_1_labels)+sorted(task_2_labels)
-        
-        for index, label in enumerate(all_labels):
-            id2label[index] = label
-            label2id[label] = index
-            
         return {
             "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
             "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
@@ -115,13 +75,6 @@ def get_eval_dataset(config):
         }
         
     elif current_task == 1:
-        task_0_labels = pd.read_csv(config.data.task_0.train_csv).label.unique().tolist()
-        task_1_labels = pd.read_csv(config.data.task_1.train_csv).label.unique().tolist()
-        all_labels = sorted(task_0_labels)+sorted(task_1_labels)
-        
-        for index, label in enumerate(all_labels):
-            id2label[index] = label
-            label2id[label] = index
         return {
             "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
             "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
@@ -130,10 +83,6 @@ def get_eval_dataset(config):
         }
         
     elif current_task == 0:
-        all_labels = sorted(pd.read_csv(config.data.task_0.train_csv).label.unique().tolist())
-        for index, label in enumerate(all_labels):
-            id2label[index] = label
-            label2id[label] = index
         return {
             "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
             "id2label" : id2label,
