@@ -211,9 +211,11 @@ class CSTA(nn.Module):
         if checkpoint_path_to_load == None:
             if self.task_n == 0:
                 if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
+                    self.apply(self._init_weights)
                     checkpoint_path_to_load = self.config.checkpoints.task_0
                     logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
                 else:
+                    self.apply(self._init_weights)
                     logging.info("Task 0: Training from scratch. No checkpoint provided.")
             else:
                 prev_task_n = self.task_n - 1
@@ -225,11 +227,13 @@ class CSTA(nn.Module):
                 logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
 
             if checkpoint_path_to_load:
+                self.apply(self._init_weights)
                 self.load_weights(checkpoint_path_to_load)
             else:
                 pass
         else:
             logging.info(f"Loading given checkpoint from: {checkpoint_path_to_load}")
+            self.apply(self._init_weights)
             self.load_weights(checkpoint_path_to_load)
 
         if self.task_n > 0:
