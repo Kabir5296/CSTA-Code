@@ -99,12 +99,12 @@ class CSTA(nn.Module):
         self.temporal_pos_embed = nn.Parameter(torch.randn(1, self.num_frames, 1, self.dim))
         self.spatial_pos_embed = nn.Parameter(torch.randn(1, self.num_patches + 1, self.dim))
 
+        # keeping a list of transformer blocks and inter task cross attention blocks
+        self.blocks = nn.ModuleList([TimesFormerBlock(dim = self.dim, num_heads=self.num_heads) for _ in range(self.num_layers)])
+        
         # keeping a list of adapters. Each transformer block has a list of adapters
         self.temporal_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
         self.spatial_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
-
-        # keeping a list of transformer blocks and inter task cross attention blocks
-        self.blocks = nn.ModuleList([TimesFormerBlock(dim = self.dim, num_heads=self.num_heads) for _ in range(self.num_layers)])
 
         # keeping a list of classifiers
         self.classifiers = nn.ModuleList([nn.Linear(self.dim, self.num_classes_t0)])
