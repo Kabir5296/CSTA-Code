@@ -99,12 +99,12 @@ class CSTA(nn.Module):
         self.temporal_pos_embed = nn.Parameter(torch.randn(1, self.num_frames, 1, self.dim))
         self.spatial_pos_embed = nn.Parameter(torch.randn(1, self.num_patches + 1, self.dim))
 
+        # keeping a list of transformer blocks and inter task cross attention blocks
+        self.blocks = nn.ModuleList([TimesFormerBlock(dim = self.dim, num_heads=self.num_heads) for _ in range(self.num_layers)])
+        
         # keeping a list of adapters. Each transformer block has a list of adapters
         self.temporal_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
         self.spatial_adapters = nn.ModuleList([nn.ModuleList() for _ in range(self.num_layers)])
-
-        # keeping a list of transformer blocks and inter task cross attention blocks
-        self.blocks = nn.ModuleList([TimesFormerBlock(dim = self.dim, num_heads=self.num_heads) for _ in range(self.num_layers)])
 
         # keeping a list of classifiers
         self.classifiers = nn.ModuleList([nn.Linear(self.dim, self.num_classes_t0)])
@@ -211,9 +211,11 @@ class CSTA(nn.Module):
         if checkpoint_path_to_load == None:
             if self.task_n == 0:
                 if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
+                    self.apply(self._init_weights)
                     checkpoint_path_to_load = self.config.checkpoints.task_0
                     logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
                 else:
+                    self.apply(self._init_weights)
                     logging.info("Task 0: Training from scratch. No checkpoint provided.")
             else:
                 prev_task_n = self.task_n - 1
@@ -225,11 +227,13 @@ class CSTA(nn.Module):
                 logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
 
             if checkpoint_path_to_load:
+                self.apply(self._init_weights)
                 self.load_weights(checkpoint_path_to_load)
             else:
                 pass
         else:
             logging.info(f"Loading given checkpoint from: {checkpoint_path_to_load}")
+            self.apply(self._init_weights)
             self.load_weights(checkpoint_path_to_load)
 
         if self.task_n > 0:

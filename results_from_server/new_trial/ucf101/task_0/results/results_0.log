@@ -1,0 +1,21 @@
+INFO:root:
+
+Evaluation for model for task 0: 08/12/2025, 16:29:32
+
+INFO:root:The config is being used from file: config/eval_configs/UCF101/eval_task0.yml
+INFO:root:Architecture already matches Task 0
+INFO:root:Model architecture prepared: 0 adapter(s), 1 classifier(s).
+INFO:root:
+
+DO NOT WORRY ABOUT THE CHECKPOINT LOADING. 
+We're now loading the actual checkpoint from model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Loading weights from: model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:| Task: 0 | | Average Loss: 0.5592, | | Average Accuracy: 0.8535, | | Samples: 894 | 
+INFO:root:
+
+=======================================================================================
+INFO:root:Model Used: model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Final Accuracy: task_0: 0.8535
+INFO:root:
+
+=======================================================================================

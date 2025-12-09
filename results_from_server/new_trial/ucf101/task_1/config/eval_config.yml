@@ -1,0 +1,54 @@
+model:
+  model_name: csta
+  dim: 512
+  num_heads: 8
+  num_layers: 8
+
+data:
+  dataset_name: ucf101
+  num_frames: 8
+  img_size: 112
+  num_channels: 3
+  patch_size: 16
+  root_dir: DATA/UCF101
+  label2id_path: DATA/UCF101/tasks/label2id.json
+  task_0:
+    train_csv: DATA/UCF101/tasks/task_0/train.csv
+    test_csv: DATA/UCF101/tasks/task_0/test.csv
+    valid_csv: DATA/UCF101/tasks/task_0/val.csv
+  task_1:
+    train_csv: DATA/UCF101/tasks/task_1/train.csv
+    test_csv: DATA/UCF101/tasks/task_1/test.csv
+    valid_csv: DATA/UCF101/tasks/task_1/val.csv
+
+loss:
+  calculate_distil_loss: False
+  calculate_lt_ls_loss: False
+  count_relations: False
+  miu_d: 0.15
+  miu_t: 0.15
+  miu_s: 0.15
+  lambda_1: 0.2
+  lambda_2: 0.2
+  K: 5
+  temporal_features_path: model_save/new_trial/bank/task_0_model/temporal_feats_task0.pt
+  spatial_features_path: model_save/new_trial/bank/task_0_model/spatial_feats_task0.pt
+  temporal_relations_path: model_save/new_trial/bank/task_0_model/temporal_relations_task0.json
+  spatial_relations_path: model_save/new_trial/bank/task_0_model/spatial_relations_task0.json
+
+task:
+  task_n: 1
+  init_with_adapters: False
+  num_classes_t0: 51
+  num_classes_new: 10
+
+eval:
+  random_seed: 42
+  test_batch_size: 32
+  dataloader_num_workers: 4
+  dataloader_pin_memory: False
+  dataloader_persistent_workers: False
+
+checkpoints:
+  current_config: model_save/new_trial/ucf101/task_1/config/train_config.yml
+  current_checkpoint: model_save/new_trial/ucf101/task_1/model/checkpoints/final_model.pth
