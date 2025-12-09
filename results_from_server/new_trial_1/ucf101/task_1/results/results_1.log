@@ -1,0 +1,25 @@
+INFO:root:
+
+Evaluation for model for task 1: 08/12/2025, 23:13:44
+
+INFO:root:The config is being used from file: config/eval_configs/UCF101/eval_task1_unfreeze.yml
+INFO:root:Task 1: Loading checkpoint from Task 0 at model_save/new_trial_1/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Loading weights from: model_save/new_trial_1/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Task 1: Freezing all parameters except for the new components.
+INFO:root:Model architecture prepared: 1 adapter(s), 2 classifier(s).
+INFO:root:
+
+DO NOT WORRY ABOUT THE CHECKPOINT LOADING. 
+We're now loading the actual checkpoint from model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Loading weights from: model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:| Task: 0 | | Average Loss: 3.3527, | | Average Accuracy: 0.2114, | | Samples: 894 | 
+INFO:root:| Task: 1 | | Average Loss: 2.4464, | | Average Accuracy: 0.2375, | | Samples: 80 | 
+INFO:root:
+
+=======================================================================================
+INFO:root:Model Used: model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Final Accuracy: task_0: 0.2114, task_1: 0.2375
+INFO:root:Average Accuracy: 0.2245
+INFO:root:
+
+=======================================================================================

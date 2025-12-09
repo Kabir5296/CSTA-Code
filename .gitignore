@@ -3,3 +3,4 @@ DATA/*
 !DATA/tasks
 **/*__pycache__
 **/*.ipynb
+venv
