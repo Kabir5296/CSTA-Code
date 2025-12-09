@@ -63,4 +63,4 @@ fine_tune:
   train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
   train_data_2: DATA/UCF101/tasks/task_2/fine_tune.csv
   task_n_ft: 1
-  ft_epochs: 7
+  ft_epochs: 15
