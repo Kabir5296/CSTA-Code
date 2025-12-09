@@ -12,11 +12,12 @@
 #SBATCH --mem=30G
 
 # module load Miniforge3
+
 conda activate ds_project
 module load CUDA
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1.yml"
-OUTPUT_FOLDER="model_save/new_trial"
+EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1_unfreeze.yml"
+OUTPUT_FOLDER="model_save/new_trial_1"
 
 python evaluation.py \
     --config "$EVAL_CONFIG_FILE" \

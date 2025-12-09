@@ -51,4 +51,4 @@ eval:
 
 checkpoints:
   current_config: model_save/new_trial_1/ucf101/task_1/config/train_config.yml
-  current_checkpoint: model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model.pth
+  current_checkpoint: model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
