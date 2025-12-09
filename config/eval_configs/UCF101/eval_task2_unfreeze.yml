@@ -35,10 +35,10 @@ loss:
   lambda_1: 0.2
   lambda_2: 0.2
   K: 5
-  temporal_features_path: model_save/new_trial/bank/task_1_model/temporal_feats_task1.pt
-  spatial_features_path: model_save/new_trial/bank/task_1_model/spatial_feats_task1.pt
-  temporal_relations_path: model_save/new_trial/bank/task_1_model/temporal_relations_task1.json
-  spatial_relations_path: model_save/new_trial/bank/task_1_model/spatial_relations_task1.json
+  temporal_features_path: model_save/new_trial_1/bank/task_1_model/temporal_feats_task1.pt
+  spatial_features_path: model_save/new_trial_1/bank/task_1_model/spatial_feats_task1.pt
+  temporal_relations_path: model_save/new_trial_1/bank/task_1_model/temporal_relations_task1.json
+  spatial_relations_path: model_save/new_trial_1/bank/task_1_model/spatial_relations_task1.json
 
 task:
   task_n: 2
@@ -54,5 +54,5 @@ eval:
   dataloader_persistent_workers: False
 
 checkpoints:
-  current_config: model_save/new_trial/ucf101/task_2/config/train_config.yml
-  current_checkpoint: model_save/new_trial/ucf101/task_2/model/checkpoints/final_model_after_ft.pth
+  current_config: model_save/new_trial_1/ucf101/task_2/config/train_config.yml
+  current_checkpoint: model_save/new_trial_1/ucf101/task_2/model/checkpoints/final_model_after_ft.pth

@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:a100_10g:1
 #SBATCH --account=2025-fall-ds-677-amr239-ak3535
 #SBATCH --qos=course
-#SBATCH --time=70:00:00
+#SBATCH --time=1:00:00
 #SBATCH --output=./job_logs/ucf101/eval/task2/%x.%j.out
 #SBATCH --error=./job_logs/ucf101/eval/task2/%x.%j.err
 #SBATCH --ntasks=1
@@ -15,8 +15,8 @@
 conda activate ds_project
 module load CUDA
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2.yml"
-OUTPUT_FOLDER="model_save/new_trial"
+EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2_unfreeze.yml"
+OUTPUT_FOLDER="model_save/new_trial_1"
 
 python evaluation.py \
     --config "$EVAL_CONFIG_FILE" \

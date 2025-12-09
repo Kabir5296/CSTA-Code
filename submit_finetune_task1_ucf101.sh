@@ -15,9 +15,15 @@
 conda activate ds_project
 module load CUDA
 
-TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1.yml"
-OUTPUT_FOLDER="model_save/new_trial"
+TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1_unfreeze_ft.yml"
+OUTPUT_FOLDER="model_save/new_trial_1"
 
 python fine_tune.py \
     --config "$TRAIN_CONFIG_FILE" \
     --save_folder "$OUTPUT_FOLDER"
+
+EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1_unfreeze.yml"
+
+python evaluation.py \
+    --config "$EVAL_CONFIG_FILE" \
+    --save_results "$OUTPUT_FOLDER"

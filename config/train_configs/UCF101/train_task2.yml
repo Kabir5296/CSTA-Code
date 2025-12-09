@@ -26,10 +26,10 @@ loss:
   lambda_1: 0.2
   lambda_2: 0.2
   K: 5
-  temporal_features_path: model_save/new_trial/bank/task_1_model/temporal_feats_task1.pt
-  spatial_features_path: model_save/new_trial/bank/task_1_model/spatial_feats_task1.pt
-  temporal_relations_path: model_save/new_trial/bank/task_1_model/temporal_relations_task1.json
-  spatial_relations_path: model_save/new_trial/bank/task_1_model/spatial_relations_task1.json
+  temporal_features_path: model_save/new_trial_1/bank/task_1_model/temporal_feats_task1.pt
+  spatial_features_path: model_save/new_trial_1/bank/task_1_model/spatial_feats_task1.pt
+  temporal_relations_path: model_save/new_trial_1/bank/task_1_model/temporal_relations_task1.json
+  spatial_relations_path: model_save/new_trial_1/bank/task_1_model/spatial_relations_task1.json
 
 task:
   task_n: 2
@@ -53,11 +53,14 @@ train:
   early_stop_patience: 5
 
 checkpoints:
-  old_config_path: model_save/new_trial/ucf101/task_1/config/train_config.yml
-  old_checkpoint: model_save/new_trial/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+  old_config_path: model_save/new_trial_1_1/ucf101/task_1/config/train_config.yml
+  old_checkpoint: model_save/new_trial_1_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
 
 fine_tune:
   fine_tune: True
-  train_data: DATA/UCF101/tasks/task_1/fine_tune.csv
+  unfreeze: False
+  train_data_0: DATA/UCF101/tasks/task_0/fine_tune.csv
+  train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
+  train_data_2: DATA/UCF101/tasks/task_2/fine_tune.csv
   task_n_ft: 1
-  ft_epochs: 10
+  ft_epochs: 20

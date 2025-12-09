@@ -148,17 +148,24 @@ def main():
 
     if config.fine_tune.fine_tune:
         task_n = config.fine_tune.task_n_ft
+        del train_dataloader, eval_dataloader, test_dataloader
+        torch.cuda.empty_cache()
+        
         logging.info(f"\n\nStarting Fine-tuning for task {task_n}.\n")
         dataset = get_video_dataset_for_ft(config)
         ft_train_dataset, _,_  = dataset["train"], dataset["id2label"], dataset["label2id"]
         
         train_dataloader = DataLoader(ft_train_dataset, 
-                            batch_size=TrainingConfigs.training_batch_size, 
+                            batch_size=5, 
                             shuffle=True, 
                             pin_memory=TrainingConfigs.dataloader_pin_memory, 
                             persistent_workers=TrainingConfigs.dataloader_persistent_workers,
                             num_workers=TrainingConfigs.dataloader_num_workers,
                             )
+        # Unfreeze all parameters
+        if config.fine_tune.unfreeze:
+            for param in model.parameters():
+                param.requires_grad = True
 
         accelerator = Accelerator()
         model, optimizer, train_dataloader, scheduler = accelerator.prepare(

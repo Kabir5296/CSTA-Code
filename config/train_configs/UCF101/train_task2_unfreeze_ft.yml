@@ -11,9 +11,9 @@ data:
   num_channels: 3
   patch_size: 16
   root_dir: DATA/UCF101
-  train_csv: DATA/UCF101/tasks/task_1/train.csv
-  test_csv: DATA/UCF101/tasks/task_1/test.csv
-  valid_csv: DATA/UCF101/tasks/task_1/val.csv
+  train_csv: DATA/UCF101/tasks/task_2/train.csv
+  test_csv: DATA/UCF101/tasks/task_2/test.csv
+  valid_csv: DATA/UCF101/tasks/task_2/val.csv
   label2id_path: DATA/UCF101/tasks/label2id.json
 
 loss:
@@ -26,13 +26,13 @@ loss:
   lambda_1: 0.2
   lambda_2: 0.2
   K: 5
-  temporal_features_path: model_save/new_trial/bank/task_0_model/temporal_feats_task0.pt
-  spatial_features_path: model_save/new_trial/bank/task_0_model/spatial_feats_task0.pt
-  temporal_relations_path: model_save/new_trial/bank/task_0_model/temporal_relations_task0.json
-  spatial_relations_path: model_save/new_trial/bank/task_0_model/spatial_relations_task0.json
+  temporal_features_path: model_save/new_trial_1/bank/task_1_model/temporal_feats_task1.pt
+  spatial_features_path: model_save/new_trial_1/bank/task_1_model/spatial_feats_task1.pt
+  temporal_relations_path: model_save/new_trial_1/bank/task_1_model/temporal_relations_task1.json
+  spatial_relations_path: model_save/new_trial_1/bank/task_1_model/spatial_relations_task1.json
 
 task:
-  task_n: 1
+  task_n: 2
   init_with_adapters: False
   num_classes_t0: 51
   num_classes_new: 10
@@ -45,21 +45,22 @@ train:
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
-  learning_rate: 1e-5
+  learning_rate: 1e-4
   weight_decay: 1e-4
   eta_min: 1e-10
-  warmup_epochs: 5
+  warmup_epochs: 2
   max_grad: 1.5
   early_stop_patience: 5
 
 checkpoints:
-  old_config_path: model_save/new_trial/ucf101/task_0/config/train_config.yml
-  old_checkpoint: model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
+  old_config_path: model_save/new_trial_1/ucf101/task_1/config/train_config.yml
+  old_checkpoint: model_save/new_trial_1/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
 
 fine_tune:
   fine_tune: True
-  unfreeze: False
+  unfreeze: True
   train_data_0: DATA/UCF101/tasks/task_0/fine_tune.csv
   train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
-  task_n_ft: 0
+  train_data_2: DATA/UCF101/tasks/task_2/fine_tune.csv
+  task_n_ft: 1
   ft_epochs: 20
