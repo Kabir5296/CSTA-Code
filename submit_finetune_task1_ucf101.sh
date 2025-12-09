@@ -27,3 +27,15 @@ EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1_unfreeze.yml"
 python evaluation.py \
     --config "$EVAL_CONFIG_FILE" \
     --save_results "$OUTPUT_FOLDER"
+
+TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task2_unfreeze_ft.yml"
+
+python fine_tune.py \
+    --config "$TRAIN_CONFIG_FILE" \
+    --save_folder "$OUTPUT_FOLDER"
+
+EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2_unfreeze.yml"
+
+python evaluation.py \
+    --config "$EVAL_CONFIG_FILE" \
+    --save_results "$OUTPUT_FOLDER"
