@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --job-name=task1_ucf
+#SBATCH --job-name=tasksall_ucf
 #SBATCH --partition=course_gpu
 #SBATCH --gres=gpu:a100_10g:1
 #SBATCH --account=2025-fall-ds-677-amr239-ak3535
@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=30G
 
-# module load Miniforge3
+module load Miniforge3
 conda activate ds_project
 module load CUDA
 

@@ -46,5 +46,5 @@ eval:
   dataloader_persistent_workers: False
 
 checkpoints:
-  current_config: model_save/new_trial/ucf101/task_0/config/train_config.yml
-  current_checkpoint: model_save/new_trial/ucf101/task_0/model/checkpoints/final_model.pth
+  current_config: model_save/final_trial/ucf101/task_0/config/train_config.yml
+  current_checkpoint: model_save/final_trial/ucf101/task_0/model/checkpoints/final_model.pth
