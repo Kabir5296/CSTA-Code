@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/evaluation.py", line 154, in <module>
+    main()
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/evaluation.py", line 94, in main
+    task_0_test, task_1_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']
+KeyError: 'task_2_test'

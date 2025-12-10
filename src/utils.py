@@ -12,10 +12,10 @@ def get_config(file_name):
         config=yaml.safe_load(f)
     return dict_to_object(config)
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torchvision import transforms
 import pandas as pd
-import torch, os, random, logging
+import torch, os, json, random, logging
 import numpy as np
 from tqdm import tqdm
 from torchvision.io import read_video
@@ -28,18 +28,14 @@ def set_all_seeds(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def get_video_dataset(config):
+def get_video_dataset(config, task_n=None):
     training_csv_path = config.data.train_csv
     valid_csv_path = config.data.valid_csv
     test_csv_path = config.data.test_csv
-    train = pd.read_csv(training_csv_path)
 
-    all_labels = sorted(train['label'].unique().tolist())
-    id2label = {}
-    label2id = {}
-    for index, label in enumerate(all_labels):
-        id2label[index] = label
-        label2id[label] = index
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
@@ -48,6 +44,70 @@ def get_video_dataset(config):
         "id2label" : id2label,
         "label2id" : label2id,
     }
+    
+def get_video_dataset_for_ft(config):
+    ft_task_n = config.fine_tune.task_n_ft
+    
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
+    
+    if ft_task_n == 0:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif ft_task_n == 1:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1   
+        training_csv_path_2 = config.fine_tune.train_data_2      
+        
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_2, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
+    
+def get_eval_dataset(config):
+    current_task = config.task.task_n
+
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
+    
+    if current_task == 2:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 1:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 0:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
 
 class VideoDataset(Dataset):
     def __init__(self, config, csv_path, label2id ,split="train"):
@@ -257,3 +317,68 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
     )
     
     return avg_loss, avg_acc
+
+def test(model, eval_dataloader, accelerator, task_n):
+    model.eval()
+    
+    running_acc = 0.0
+    total_samples = 0
+    running_loss = running_ce_loss = running_distil_loss = running_lt_loss = running_ls_loss = 0.0
+    
+    progress_bar = tqdm(
+        total=len(eval_dataloader),
+        disable=not accelerator.is_local_main_process,
+        desc=f"Test on task: {task_n}"
+    )
+    
+    with torch.no_grad():
+        for batch in eval_dataloader:
+            input_frames = batch["input_frames"]
+            labels = batch["label"]
+            batch_size = labels.size(0)
+
+            outputs = model(input_frames, labels)
+            loss = outputs.loss
+            
+            predictions = outputs.predictions
+            correct = (predictions == labels).sum().item()
+            accuracy = correct / batch_size
+            
+            running_loss += loss.item() * batch_size
+            
+            running_acc += correct
+            total_samples += batch_size
+            
+            progress_bar.update(1)
+            progress_bar.set_postfix({
+                "loss": f"{loss.item():.4f}",
+                "batch_acc": f"{accuracy:.4f}",
+                "running_acc": f"{running_acc/total_samples:.4f}"
+            })
+    
+    avg_loss = running_loss / total_samples
+    avg_acc = running_acc / total_samples
+
+    progress_bar.close()
+    logging.info(
+        f"| Task: {task_n} | "
+        f"| Average Loss: {avg_loss:.4f}, | "
+        f"| Average Accuracy: {avg_acc:.4f}, | "
+        f"| Samples: {total_samples} | "
+    )
+    
+    return avg_loss, avg_acc
+
+def get_model_info(model):
+    # 1. Model Parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # 2. Model Size (Theoretical)
+    param_size = sum(p.numel() * p.element_size() for p in model.parameters())
+    buffer_size = sum(b.numel() * b.element_size() for b in model.buffers())
+    size_mb = (param_size + buffer_size) / 1024**2
+    
+    print(f"Total Params:     {total_params / 1e6:.2f}M")
+    print(f"Trainable Params: {trainable_params / 1e6:.2f}M")
+    print(f"Model Size (MB):  {size_mb:.2f} MB")

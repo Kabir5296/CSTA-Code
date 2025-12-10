@@ -1,0 +1,9 @@
+/var/spool/slurmd/job683164/slurm_script: line 15: conda: command not found
+Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/evaluation.py", line 3, in <module>
+    from src import (
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/__init__.py", line 1, in <module>
+    from .model import CSTA
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/model.py", line 1, in <module>
+    import torch, json, logging, os
+ModuleNotFoundError: No module named 'torch'
