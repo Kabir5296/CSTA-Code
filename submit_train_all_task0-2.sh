@@ -11,9 +11,8 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=30G
 
-module load Miniforge3
+module load Miniforge3/24.11.3-0
 conda activate ds_project
-module load CUDA
 
 TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task0.yml"
 OUTPUT_FOLDER="model_save/final_trial"
