@@ -17,21 +17,21 @@ conda activate ds_project
 TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task0.yml"
 OUTPUT_FOLDER="model_save/final_trial"
 
-python train_task_0.py \
-    --config "$TRAIN_CONFIG_FILE" \
-    --save_folder "$OUTPUT_FOLDER"
+#python train_task_0.py \
+#    --config "$TRAIN_CONFIG_FILE" \
+#    --save_folder "$OUTPUT_FOLDER"
 
-TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1_unfreeze_ft.yml"
+#TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1_unfreeze_ft.yml"
 
-python fine_tune.py \
-    --config "$TRAIN_CONFIG_FILE" \
-    --save_folder "$OUTPUT_FOLDER"
+#python fine_tune.py \
+#    --config "$TRAIN_CONFIG_FILE" \
+#    --save_folder "$OUTPUT_FOLDER"
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1_unfreeze.yml"
+#EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1_unfreeze.yml"
 
-python evaluation.py \
-    --config "$EVAL_CONFIG_FILE" \
-    --save_results "$OUTPUT_FOLDER"
+#python evaluation.py \
+#    --config "$EVAL_CONFIG_FILE" \
+#    --save_results "$OUTPUT_FOLDER"
 
 TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task2_unfreeze_ft.yml"
 
