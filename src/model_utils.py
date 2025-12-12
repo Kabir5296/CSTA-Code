@@ -26,7 +26,7 @@ class TemporalMultiheadAttention(nn.Module):
         self.dim = dim
         # self.layer_norm = nn.LayerNorm(dim)
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-        self.proj = nn.Linear(dim,dim)
+        # self.proj = nn.Linear(dim,dim)
     
     def temporal_preprocess(self, x, B, T, num_patches):
         # take input x in B*T, num_patches+1, dim format. convert to B*num_patches, T, dim and returns
@@ -43,7 +43,7 @@ class TemporalMultiheadAttention(nn.Module):
         # res = x
         # x = self.layer_norm(x)      # shape: B*num_patches, T, dim
         x, _= self.msa(x,x,x)       # shape: B*num_patches, T, dim
-        x = self.proj(x)            # shape: B*num_patches, T, dim
+        # x = self.proj(x)            # shape: B*num_patches, T, dim
         # x = x + res
         x = x.reshape([B, num_patches, T, self.dim])    # shape: B, num_patches, T, dim
         x = x.permute(0,2,1,3)                          # shape: B, T, num_patches, dim
@@ -58,14 +58,14 @@ class SpatialMultiheadAttention(nn.Module):
         """
         # self.layer_norm = nn.LayerNorm(dim)
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-        self.proj = nn.Linear(dim,dim)
+        # self.proj = nn.Linear(dim,dim)
     
     def forward(self, x):
         """Forward for spatial multihead attention, residual connection and normalization are not used because it will be handled in the CSTA model itself"""
         # res = x
         # x = self.layer_norm(x)
         x, _= self.msa(x,x,x)
-        x = self.proj(x)
+        # x = self.proj(x)
         # x = x + res
         return x
     
@@ -77,14 +77,14 @@ class SpatialMultiheadCrossAttention(nn.Module):
         """
         # self.layer_norm = nn.LayerNorm(dim)
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-        self.proj = nn.Linear(dim,dim)
+        # self.proj = nn.Linear(dim,dim)
     
     def forward(self, q,k,v):
         """Forward for spatial multihead attention, residual connection and normalization are not used because it will be handled in the CSTA model itself"""
         # res = x
         # x = self.layer_norm(x)
         x, _= self.msa(q,k,v)
-        x = self.proj(x)
+        # x = self.proj(x)
         # x = x + res
         return x
     
@@ -94,7 +94,7 @@ class TemporalMultiheadCrossAttention(nn.Module):
         self.dim = dim
         self.num_heads = num_heads
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-        self.proj = nn.Linear(dim, dim)
+        # self.proj = nn.Linear(dim, dim)
 
     def temporal_preprocess(self, x, B, T):
         x = x.reshape(B, T, x.shape[1], self.dim)      # Shape: B, T, num_patches+1, dim
@@ -109,7 +109,7 @@ class TemporalMultiheadCrossAttention(nn.Module):
         k_patches, _ = self.temporal_preprocess(key, B, T_kv)
         v_patches, _ = self.temporal_preprocess(value, B, T_kv)
         attn_output, _ = self.msa(query=q_patches, key=k_patches, value=v_patches)  # Shape: (B*num_patches, T, dim)
-        x = self.proj(attn_output)                                                  # Shape: (B*num_patches, T, dim)
+        # x = self.proj(attn_output)                                                  # Shape: (B*num_patches, T, dim)
 
         x = x.reshape(B, num_patches, T, self.dim)              # Shape: B, num_patches, T, dim
         x = x.permute(0, 2, 1, 3)                               # Shape: B, T, num_patches, dim
@@ -152,8 +152,8 @@ def save_current_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Current model successfully saved to: {path}")
     
-def load_model_weights(weights_path):
-    return torch.load(weights_path, weights_only=True)
+def load_model_weights(weights_path, device="cpu"):
+    return torch.load(weights_path, weights_only=True, map_location=device)
 
 class ConfigurationError(Exception):
     pass

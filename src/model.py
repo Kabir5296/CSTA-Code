@@ -112,7 +112,6 @@ class CSTA(nn.Module):
         nn.init.trunc_normal_(self.cls_token, std=0.02)
         nn.init.trunc_normal_(self.temporal_pos_embed, std=0.02)
         nn.init.trunc_normal_(self.spatial_pos_embed, std=0.02)
-        self.apply(self._init_weights)
         
         # add the first adapter to all the timesformer blocks
         if init_with_adapters:
@@ -191,56 +190,49 @@ class CSTA(nn.Module):
 
     def load_weights(self, ste_dict_path):
         logging.info(f"Loading weights from: {ste_dict_path}")
-        state_dict = load_model_weights(ste_dict_path)
+        state_dict = load_model_weights(ste_dict_path, device=next(self.parameters()).device)
         self.load_state_dict(state_dict, strict=False)
 
     def prepare_architecture_for_current_task(self, checkpoint_path_to_load=None):
         current_attrs = self.get_model_attributes()
-        expected_count = self.task_n + 1
-        if (current_attrs["adapters_per_block"] == (expected_count-1) and 
-            current_attrs["total_classifiers"] == expected_count):
-            logging.info(f"Architecture already matches Task {self.task_n}")
-            logging.info(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
-            return
-        
+        current_num_adapters = current_attrs["adapters_per_block"]
+        current_num_classifiers = current_attrs["total_classifiers"]
+        expected_num_adapters = self.task_n
+        expected_num_classifiers = self.task_n + 1
+
         if self.task_n > 0:
-            for i in range(self.task_n):
-                self.add_one_adapter_per_block()
-                self.add_one_new_classifier(self.config.task.num_classes_new)
+            if current_num_adapters < expected_num_adapters:
+                for _ in range(expected_num_adapters - current_num_adapters):
+                    self.add_one_adapter_per_block()
 
-        if checkpoint_path_to_load == None:
-            if self.task_n == 0:
-                if hasattr(self.config, "checkpoints") and self.config.checkpoints.task_0 is not None:
-                    self.apply(self._init_weights)
-                    checkpoint_path_to_load = self.config.checkpoints.task_0
-                    logging.info(f"Task 0: Loading base checkpoint from {checkpoint_path_to_load}")
-                else:
-                    self.apply(self._init_weights)
-                    logging.info("Task 0: Training from scratch. No checkpoint provided.")
-            else:
-                prev_task_n = self.task_n - 1
-                checkpoint_path_to_load = getattr(self.config.checkpoints, f"old_checkpoint", None)
+            if current_num_classifiers < expected_num_classifiers:
+                for _ in range(expected_num_classifiers - current_num_classifiers):
+                    self.add_one_new_classifier(self.config.task.num_classes_new)
+            new_attrs = self.get_model_attributes()
 
-                if checkpoint_path_to_load is None:
-                    logging.info(f"Error: Training Task {self.task_n} but no checkpoint found for Task {prev_task_n}.")
-                    raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
-                logging.info(f"Task {self.task_n}: Loading checkpoint from Task {prev_task_n} at {checkpoint_path_to_load}")
+            logging.info(f"Current task: {self.task_n}\n, Total adapters: {new_attrs['adapters_per_block']}, Total classifiers: {new_attrs['total_classifiers']}.")
+            logging.info(f"Expected adapters: {expected_num_adapters}, Expected classifiers: {expected_num_classifiers}.")
 
-            if checkpoint_path_to_load:
+        if self.task_n == 0:
+            assert current_num_adapters == 0 or current_num_classifiers == 1, "You can not train task 0 with adapters or classifiers. Please remove them and try again."
+
+        if checkpoint_path_to_load is None:
+            if hasattr(self.config, "checkpoints") and self.config.checkpoints.old_checkpoint is not None:
+                checkpoint_path_to_load = self.config.checkpoints.old_checkpoint
+                logging.info(f"Task {self.task_n}: Loading checkpoint from {checkpoint_path_to_load}")
                 self.apply(self._init_weights)
                 self.load_weights(checkpoint_path_to_load)
             else:
-                pass
-        else:
-            logging.info(f"Loading given checkpoint from: {checkpoint_path_to_load}")
-            self.apply(self._init_weights)
-            self.load_weights(checkpoint_path_to_load)
-
+                if self.task_n == 0:
+                    logging.info("No checkpoint provided, initializing weights from scratch.")
+                    self.apply(self._init_weights)
+                else:
+                    logging.info(f"Error: Training Task {self.task_n} but no checkpoint found for Task {self.task_n - 1}.")
+                    raise ConfigurationError(f"Missing config.checkpoints.old_checkpoint")
+                
         if self.task_n > 0:
             logging.info(f"Task {self.task_n}: Freezing all parameters except for the new components.")
             self.freeze_all_but_last()
-
-        # Final check
         self.model_attributes = self.get_model_attributes()
         logging.info(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
 
@@ -564,6 +556,80 @@ class CSTA(nn.Module):
             spatial_relations=R_s_curr,
             temporal_relations=R_t_curr
         )
+        
+    def load_pretrained_weights(self, checkpoint_path):
+        logging.info(f"Loading pretrained timesformer weights from: {checkpoint_path}")
+        w = torch.load(checkpoint_path, map_location=next(self.parameters()).device)
+        
+        # 1. Unwrap the dictionary
+        if "model_state" in w:
+            src_state = w["model_state"]
+        else:
+            src_state = w
+        new_state_dict = {}
+        
+
+        for key, value in src_state.items():
+            new_key = key.replace("model.", "")
+        
+            # 1. Temporal Positional Embedding: Checkpoint [1, 8, 768] -> Model [1, 8, 1, 768]
+            if "time_embed" in new_key:
+                new_key = "temporal_pos_embed"
+                if value.ndim == 3:
+                    value = value.unsqueeze(2)
+            
+            # 2. Skip Classifier Head (400 classes vs 51 classes)
+            elif "head" in new_key:
+                continue
+
+            # --- B. Handle Naming Mismatches ---            
+            elif "patch_embed.proj" in new_key:
+                new_key = new_key.replace("patch_embed.proj", "patch_embed")
+            elif "pos_embed" in new_key:
+                new_key = "spatial_pos_embed"
+                
+            elif "blocks" in new_key:
+                # --- Temporal Branch ---
+                if "temporal_norm1" in new_key:
+                    new_key = new_key.replace("temporal_norm1", "norm_t")
+                
+                # Fix: Explicitly map qkv.weight -> in_proj_weight (Underscore, not dot)
+                elif "temporal_attn.qkv.weight" in new_key:
+                    new_key = new_key.replace("temporal_attn.qkv.weight", "temporal_msa.msa.in_proj_weight")
+                elif "temporal_attn.qkv.bias" in new_key:
+                    new_key = new_key.replace("temporal_attn.qkv.bias", "temporal_msa.msa.in_proj_bias")
+                
+                # Map source projection to the PyTorch MSA internal output projection
+                elif "temporal_attn.proj" in new_key:
+                    new_key = new_key.replace("temporal_attn.proj", "temporal_msa.msa.out_proj")
+
+                # Ignore 'temporal_fc' from checkpoint
+                elif "temporal_fc" in new_key:
+                    continue
+
+                # --- Spatial Branch ---
+                elif "norm1" in new_key: 
+                    new_key = new_key.replace("norm1", "norm_s")
+                
+                # Fix: Explicitly map qkv.weight -> in_proj_weight
+                elif "attn.qkv.weight" in new_key:
+                    new_key = new_key.replace("attn.qkv.weight", "spatial_msa.msa.in_proj_weight")
+                elif "attn.qkv.bias" in new_key:
+                    new_key = new_key.replace("attn.qkv.bias", "spatial_msa.msa.in_proj_bias")
+                
+                elif "attn.proj" in new_key:
+                    new_key = new_key.replace("attn.proj", "spatial_msa.msa.out_proj")
+                    
+                # --- MLP ---
+                elif "norm2" in new_key:
+                    new_key = new_key.replace("norm2", "norm_mlp")
+                elif "mlp.fc1" in new_key:
+                    new_key = new_key.replace("mlp.fc1", "mlp.0")
+                elif "mlp.fc2" in new_key:
+                    new_key = new_key.replace("mlp.fc2", "mlp.2")
+            new_state_dict[new_key] = value
+        self.load_state_dict(new_state_dict, strict=False)
+        logging.info("Pretrained weights loaded successfully.")
         
     def save_feature_banks(self, dataloader, accelerator, save_dir):
         """Extracts and saves spatial/temporal features (for Es/Et) AND relations (for Ls/Lt) from the current task's data."""
