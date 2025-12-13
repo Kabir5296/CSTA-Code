@@ -1,0 +1,31 @@
+Training epoch 0:   0%|          | 0/651 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/train_task_0.py", line 135, in <module>
+    main()
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/train_task_0.py", line 93, in main
+    train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad=TrainingConfigs.max_grad)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/utils.py", line 188, in train_epoch
+    outputs = model(input_frames, labels)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/model.py", line 511, in forward
+    logits, distil_loss, full_feat, t_feat_curr, s_feat_curr, t_feat_old, s_feat_old = self.vanilla_forward(x, B, T)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/model.py", line 385, in vanilla_forward
+    block_s_msa = block.spatial_msa(x)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/model_utils.py", line 67, in forward
+    x, _= self.msa(x,x,x)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/modules/activation.py", line 1373, in forward
+    attn_output, attn_output_weights = F.multi_head_attention_forward(
+  File "/home/ak3535/.local/lib/python3.10/site-packages/torch/nn/functional.py", line 6373, in multi_head_attention_forward
+    attn_output_weights = torch.bmm(q_scaled, k.transpose(-2, -1))
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 114.00 MiB. GPU 0 has a total capacity of 9.75 GiB of which 55.00 MiB is free. Process 135357 has 556.00 MiB memory in use. Including non-PyTorch memory, this process has 9.62 GiB memory in use. Of the allocated memory 9.11 GiB is allocated by PyTorch, and 362.53 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Training epoch 0:   0%|          | 0/651 [00:16<?, ?it/s]

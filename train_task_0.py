@@ -38,7 +38,7 @@ def main():
     )
     logger = logging.getLogger(__name__)
     logging.info(f"\n\nTraining for task 0 starting on: {datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')}\n")
-    logging.info(f"The config is being used from file: config_path")
+    logging.info(f"The config is being used from file: {config_path}")
     logging.info(f"Model config: model_name: {config.model.model_name}, dim: {config.model.dim}, num_heads: {config.model.num_heads}, num_layers: {config.model.num_layers}")
     
     # create dataset
@@ -75,6 +75,9 @@ def main():
     # now do model
     model = CSTA(config_file=config_path)
     model.prepare_architecture_for_current_task()
+    
+    for param in model.parameters():
+        param.requires_grad = True
     
     # optimizer = optim.SGD(model.parameters(), lr = TrainingConfigs.learning_rate, weight_decay=TrainingConfigs.weight_decay)
     optimizer = optim.AdamW(model.parameters(), lr = float(TrainingConfigs.learning_rate), weight_decay = float(TrainingConfigs.weight_decay))

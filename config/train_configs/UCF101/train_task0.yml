@@ -37,13 +37,13 @@ task:
 
 train:
   random_seed: 42
-  num_training_epochs: 10
+  num_training_epochs: 20
   training_batch_size: 4
   evaluation_batch_size: 4
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
-  learning_rate: 1e-5
+  learning_rate: 3e-5
   weight_decay: 1e-4
   eta_min: 1e-10
   warmup_epochs: 2
