@@ -7,13 +7,13 @@ model:
 data:
   dataset_name: ucf101
   num_frames: 8
-  img_size: 112
+  img_size: 224
   num_channels: 3
   patch_size: 16
   root_dir: DATA/UCF101
-  train_csv: DATA/UCF101/tasks/task_1/train.csv
-  test_csv: DATA/UCF101/tasks/task_1/test.csv
-  valid_csv: DATA/UCF101/tasks/task_1/val.csv
+  train_csv: DATA/UCF101/tasks/task_0/train.csv
+  test_csv: DATA/UCF101/tasks/task_0/test.csv
+  valid_csv: DATA/UCF101/tasks/task_0/val.csv
   label2id_path: DATA/UCF101/tasks/label2id.json
 
 loss:
@@ -30,35 +30,36 @@ loss:
   spatial_features_path: model_save/pretrained/bank/task_0_model/spatial_feats_task0.pt
   temporal_relations_path: model_save/pretrained/bank/task_0_model/temporal_relations_task0.json
   spatial_relations_path: model_save/pretrained/bank/task_0_model/spatial_relations_task0.json
+  memory_bandk_dir: model_save/pretrained/bank/task_1_model/
 
 task:
   task_n: 1
   init_with_adapters: False
   num_classes_t0: 51
-  num_classes_new: 10
+  num_classes_new: 5
 
 train:
   random_seed: 42
-  num_training_epochs: 50
-  training_batch_size: 32
-  evaluation_batch_size: 32
+  num_training_epochs: 10
+  training_batch_size: 16
+  evaluation_batch_size: 16
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
-  learning_rate: 1e-5
+  learning_rate: 1e-4
   weight_decay: 1e-4
   eta_min: 1e-10
-  warmup_epochs: 5
-  max_grad: 1.5
-  early_stop_patience: 5
+  grad_acc: 4
+  warmup_epochs: 3
+  max_grad: 2.5
+  early_stop_patience: 4
 
 checkpoints:
   old_config_path: model_save/pretrained/ucf101/task_0/config/train_config.yml
-  old_checkpoint: model_save/pretrained/ucf101/task_0/model/checkpoints/final_model.pth
+  old_checkpoint: model_save/pretrained/ucf101/task_0/model/checkpoints/best_model_epoch_1.pth
 
 fine_tune:
   fine_tune: True
-  unfreeze: False
   train_data_0: DATA/UCF101/tasks/task_0/fine_tune.csv
   train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
   task_n_ft: 0

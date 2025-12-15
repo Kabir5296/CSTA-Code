@@ -358,7 +358,8 @@ class CSTA(nn.Module):
             is_last_layer = (block_idx == len(self.blocks) - 1)
 
             # Temporal Branch
-            block_t_msa = block.temporal_msa(x, B, T, self.num_patches)
+            x_norm = block.norm_t(x)
+            block_t_msa = block.temporal_msa(x_norm, B, T, self.num_patches)
             temporal_adapter_features = [block_t_msa]
 
             if self.task_n != 0:
@@ -373,16 +374,17 @@ class CSTA(nn.Module):
                     reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features[:-1]]
                     kv = torch.cat(reshaped_feats, dim=1)
                     kv = kv.view(-1, kv.shape[2], self.dim)
-                x = block.norm_t(x + block_t_msa + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches))
+                x = x + block_t_msa + block.temporal_cross_attention(q, kv, kv, B, T, self.num_patches)
             else:
-                x = block.norm_t(x + block_t_msa)
+                x = x + block_t_msa
             
             # Capture Temporal Feature (Tn) at last layer
             if is_last_layer:
                 t_feat_curr = x.clone()
 
             # Spatial Branch
-            block_s_msa = block.spatial_msa(x)
+            x_norm = block.norm_s(x)
+            block_s_msa = block.spatial_msa(x_norm)
             spatial_adapter_features = [block_s_msa]
 
             if self.task_n != 0:
@@ -395,9 +397,9 @@ class CSTA(nn.Module):
                     kv = spatial_adapter_features[-2]
                 else:
                     kv = torch.cat(spatial_adapter_features[:-1], dim=1)
-                x = block.norm_s(x + block_s_msa + block.spatial_cross_attention(q, kv, kv))
+                x = x + block_s_msa + block.spatial_cross_attention(q, kv, kv)
             else:
-                x = block.norm_s(x + block_s_msa)
+                x = x + block_s_msa
 
             x_reshaped = x.view(B, T, self.num_patches + 1, self.dim)
             cls_token = x_reshaped[:, :, 0, :]                          # [B, T, D]
@@ -417,7 +419,8 @@ class CSTA(nn.Module):
             
             if self.calculate_distil_loss:
                 with torch.no_grad():
-                    block_t_msa_old = block.temporal_msa(x_old, B, T, self.num_patches)
+                    x_old_norm = block.norm_t(x_old)
+                    block_t_msa_old = block.temporal_msa(x_old_norm, B, T, self.num_patches)
                     temporal_adapter_features_old = [block_t_msa_old]
 
                     if (self.task_n - 1) != 0:
@@ -432,15 +435,16 @@ class CSTA(nn.Module):
                             reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features_old[:-1]]
                             kv = torch.cat(reshaped_feats, dim=1)
                             kv = kv.view(-1, kv.shape[2], self.dim)
-                        x_old = block.norm_t(x_old + block_t_msa_old + self.temporal_cross_attention_old[block_idx](q, kv, kv, B, T, self.num_patches))
+                        x_old = x_old + block_t_msa_old + self.temporal_cross_attention_old[block_idx](q, kv, kv, B, T, self.num_patches)
                     else:
-                        x_old = block.norm_t(x_old + block_t_msa_old)
+                        x_old = x_old + block_t_msa_old
                     
                     if is_last_layer:
                         t_feat_old = x_old.clone()
 
                     # same for spatial
-                    block_s_msa_old = block.spatial_msa(x_old)
+                    x_old_norm = block.norm_s(x_old)
+                    block_s_msa_old = block.spatial_msa(x_old_norm)
                     spatial_adapter_features_old = [block_s_msa_old]
 
                     if (self.task_n - 1) != 0:
@@ -453,17 +457,17 @@ class CSTA(nn.Module):
                             kv = spatial_adapter_features_old[-2]
                         else:
                             kv = torch.cat(spatial_adapter_features_old[:-1], dim=1)
-                        x_old = block.norm_s(x_old + block_s_msa_old + self.spatial_cross_attention_old[block_idx](q, kv, kv))
+                        x_old = x_old + block_s_msa_old + self.spatial_cross_attention_old[block_idx](q, kv, kv)
                     else:
-                        x_old = block.norm_s(x_old + block_s_msa_old)
+                        x_old = x_old + block_s_msa_old
 
                     x_reshaped_old = x_old.view(B, T, self.num_patches + 1, self.dim)
-                    cls_token_old = x_reshaped_old[:, :, 0, :]                          # [B, T, D]
-                    patches_old = x_reshaped_old[:, :, 1:, :]                           # [B, T, N, D]
-                    cls_token_avg_old = torch.mean(cls_token_old, dim=1, keepdim=True)  # [B, 1, D]
-                    cls_token_avg_old = cls_token_avg_old.repeat(1, T, 1)               # [B, T, D]
+                    cls_token_old = x_reshaped_old[:, :, 0, :]                              # [B, T, D]
+                    patches_old = x_reshaped_old[:, :, 1:, :]                               # [B, T, N, D]
+                    cls_token_avg_old = torch.mean(cls_token_old, dim=1, keepdim=True)      # [B, 1, D]
+                    cls_token_avg_old = cls_token_avg_old.repeat(1, T, 1)                   # [B, T, D]
                     
-                    new_cls_old = cls_token_avg_old.unsqueeze(2)                        # [B, T, 1, D]
+                    new_cls_old = cls_token_avg_old.unsqueeze(2)                            # [B, T, 1, D]
                     x_old_for_mlp = torch.cat([new_cls_old, patches_old], dim=2)            # [B, T, N+1, D]
                     x_old_for_mlp = x_old_for_mlp.view(B * T, self.num_patches + 1, self.dim)
                     

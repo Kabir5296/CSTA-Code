@@ -29,6 +29,7 @@ loss:
   count_relations: False
   temporal_relations_path: null
   spatial_relations_path: null
+  memory_bandk_dir: model_save/pretrained/bank/task_0_model/
 
 task:
   task_n: 0
@@ -37,9 +38,9 @@ task:
 
 train:
   random_seed: 42
-  num_training_epochs: 20
-  training_batch_size: 12
-  evaluation_batch_size: 12
+  num_training_epochs: 10
+  training_batch_size: 16
+  evaluation_batch_size: 16
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
@@ -47,8 +48,8 @@ train:
   weight_decay: 1e-4
   eta_min: 1e-10
   grad_acc: 4
-  warmup_epochs: 0
-  max_grad: 5
+  warmup_epochs: 3
+  max_grad: 2.5
   early_stop_patience: 4
 
 fine_tune:

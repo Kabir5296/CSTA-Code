@@ -119,6 +119,10 @@ def main():
         if epoch > TrainingConfigs.warmup_epochs:
             scheduler.step()
 
+        if eval_acc*100 > 93.0:
+            logging.info(f"Reached desired accuracy of 93.0%, stopping training.")
+            break
+
     accelerator.wait_for_everyone()
     accelerator.end_training()
     unwrapped_model = accelerator.unwrap_model(model)
@@ -130,9 +134,8 @@ def main():
         f"Average Loss: {eval_loss:.4f}, "
         f"Average Accuracy: {eval_acc:.4f}, "
     )
-    
-    # # Save feature banks
-    # model.save_feature_banks(train_dataloader, accelerator, f"{work_dir}/memory_bank")
+
+    unwrapped_model.save_feature_banks(train_dataloader, accelerator, config.loss.memory_bandk_dir)
 
 if __name__ == "__main__":
     main()

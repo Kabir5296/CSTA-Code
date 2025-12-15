@@ -73,6 +73,21 @@ def get_video_dataset_for_ft(config):
             "id2label" : id2label,
             "label2id" : label2id,
         }
+    elif ft_task_n == 1:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1   
+        training_csv_path_2 = config.fine_tune.train_data_2
+        training_csv_path_3 = config.fine_tune.train_data_3      
+        
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_2, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_3, label2id=label2id, split="train"),
+                    ]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
     else:
         raise NotImplementedError
     
@@ -88,6 +103,15 @@ def get_eval_dataset(config):
             "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
             "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
             "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif current_task == 3:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "task_3_test" : VideoDataset(config=config, csv_path=config.data.task_3.test_csv, label2id=label2id, split="test"),
             "id2label" : id2label,
             "label2id" : label2id,
         }
@@ -123,7 +147,7 @@ class VideoDataset(Dataset):
         
         self.transform = transforms.Compose([
             transforms.Resize((self.img_size, self.img_size)),
-            transforms.Normalize(mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             # transforms.RandomGrayscale(0.1),
             # transforms.RandomRotation((-15,15)),
             # transforms.RandomErasing(0.1),
