@@ -366,9 +366,9 @@ class CSTA(nn.Module):
                     adapter_output = temporal_adapters(block_t_msa)
                     temporal_adapter_features.append(adapter_output)
                 
-                q = temporal_adapter_features[-1]
+                q = temporal_adapter_features[-2]
                 if self.task_n == 1:
-                    kv = torch.tensor(temporal_adapter_features[-2])
+                    kv = temporal_adapter_features[-2]
                 else:
                     reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features[:-1]]
                     kv = torch.cat(reshaped_feats, dim=1)
@@ -390,7 +390,7 @@ class CSTA(nn.Module):
                     adapter_output = spatial_adapters(block_s_msa)
                     spatial_adapter_features.append(adapter_output)
 
-                q = spatial_adapter_features[-1]
+                q = spatial_adapter_features[-2]
                 if self.task_n == 1:
                     kv = spatial_adapter_features[-2]
                 else:
@@ -399,12 +399,21 @@ class CSTA(nn.Module):
             else:
                 x = block.norm_s(x + block_s_msa)
 
-            # Capture Spatial Feature (Sn) at last layer
+            x_reshaped = x.view(B, T, self.num_patches + 1, self.dim)
+            cls_token = x_reshaped[:, :, 0, :]                          # [B, T, D]
+            patches = x_reshaped[:, :, 1:, :]                           # [B, T, N, D]
+            cls_token_avg = torch.mean(cls_token, dim=1, keepdim=True)  # [B, 1, D]
+            cls_token_avg = cls_token_avg.repeat(1, T, 1)               # [B, T, D]
+            
+            new_cls = cls_token_avg.unsqueeze(2)                        # [B, T, 1, D]
+            x_for_mlp = torch.cat([new_cls, patches], dim=2)            # [B, T, N+1, D]
+            x_for_mlp = x_for_mlp.view(B * T, self.num_patches + 1, self.dim)
+            
+            # Final MLP
+            x = x_for_mlp + block.mlp(block.norm_mlp(x_for_mlp))
+            
             if is_last_layer:
                 s_feat_curr = x.clone()
-
-            # Final MLP
-            x = block.norm_mlp(x + block.mlp(x))
             
             if self.calculate_distil_loss:
                 with torch.no_grad():
@@ -416,9 +425,9 @@ class CSTA(nn.Module):
                             adapter_output = temporal_adapters(block_t_msa_old)
                             temporal_adapter_features_old.append(adapter_output)
 
-                        q = temporal_adapter_features_old[-1]
+                        q = temporal_adapter_features_old[-2]
                         if self.task_n == 1:
-                            kv = torch.tensor(temporal_adapter_features_old[-2])
+                            kv = temporal_adapter_features_old[-2]
                         else:
                             reshaped_feats = [f.view(B, T, -1, self.dim) for f in temporal_adapter_features_old[:-1]]
                             kv = torch.cat(reshaped_feats, dim=1)
@@ -439,7 +448,7 @@ class CSTA(nn.Module):
                             adapter_output = spatial_adapters(block_s_msa_old)
                             spatial_adapter_features_old.append(adapter_output)
 
-                        q = spatial_adapter_features_old[-1]
+                        q = spatial_adapter_features_old[-2]
                         if self.task_n == 1:
                             kv = spatial_adapter_features_old[-2]
                         else:
@@ -448,11 +457,21 @@ class CSTA(nn.Module):
                     else:
                         x_old = block.norm_s(x_old + block_s_msa_old)
 
+                    x_reshaped_old = x_old.view(B, T, self.num_patches + 1, self.dim)
+                    cls_token_old = x_reshaped_old[:, :, 0, :]                          # [B, T, D]
+                    patches_old = x_reshaped_old[:, :, 1:, :]                           # [B, T, N, D]
+                    cls_token_avg_old = torch.mean(cls_token_old, dim=1, keepdim=True)  # [B, 1, D]
+                    cls_token_avg_old = cls_token_avg_old.repeat(1, T, 1)               # [B, T, D]
+                    
+                    new_cls_old = cls_token_avg_old.unsqueeze(2)                        # [B, T, 1, D]
+                    x_old_for_mlp = torch.cat([new_cls_old, patches_old], dim=2)            # [B, T, N+1, D]
+                    x_old_for_mlp = x_old_for_mlp.view(B * T, self.num_patches + 1, self.dim)
+                    
+                    # Final MLP
+                    x_old = x_old_for_mlp + block.mlp(block.norm_mlp(x_old_for_mlp))
+
                     if is_last_layer:
                         s_feat_old = x_old.clone()
-
-                    # final mlp
-                    x_old = block.norm_mlp(x_old + block.mlp(x_old))
         
         # Run classifiers
         logits = self.run_classifier_head(x, B, T)

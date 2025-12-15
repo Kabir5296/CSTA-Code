@@ -166,7 +166,7 @@ class VideoDataset(Dataset):
             "label": self.label2id[label],
         }
         
-def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad = 3):
+def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc = 1, max_grad = 3):
     model.train()
 
     running_acc = 0.0
@@ -184,32 +184,33 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad
         labels = batch["label"]
         batch_size = labels.size(0)
         
-        with accelerator.accumulate(model):
-            outputs = model(input_frames, labels)
-            loss = outputs.loss
-            
-            ce_loss = outputs.ce_loss
-            distil_loss = outputs.distil_loss
-            lt_loss = outputs.lt_loss
-            ls_loss = outputs.ls_loss
-            
-            predictions = outputs.predictions
-            correct = (predictions == labels).sum().item()
-            accuracy = correct / batch_size
+        outputs = model(input_frames, labels)
+        raw_loss = outputs.loss
+        
+        ce_loss = outputs.ce_loss
+        distil_loss = outputs.distil_loss
+        lt_loss = outputs.lt_loss
+        ls_loss = outputs.ls_loss
+        
+        predictions = outputs.predictions
+        correct = (predictions == labels).sum().item()
+        accuracy = correct / batch_size
 
-            accelerator.backward(loss)
-            
+        accumulation_steps = grad_acc
+        loss = raw_loss / accumulation_steps
+        accelerator.backward(loss)
+        
+        if (batch_idx + 1) % accumulation_steps == 0:
             if accelerator.sync_gradients:
                 grad_norm = accelerator.clip_grad_norm_(model.parameters(), float(max_grad))
                 if grad_norm is not None:
                     current_grad_norm = grad_norm.item()
                     running_grad_norm += current_grad_norm
                     num_steps_with_grad += 1
-
             optimizer.step()
             optimizer.zero_grad()
         
-        running_loss += loss.item() * batch_size
+        running_loss += raw_loss.item() * batch_size
         
         running_ce_loss += ce_loss.item() * batch_size
         running_distil_loss += distil_loss.item() * batch_size if distil_loss is not None else 0.0
@@ -221,11 +222,15 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad
         
         progress_bar.update(1)
         progress_bar.set_postfix({
-            "loss": f"{loss.item():.4f}",
+            "loss": f"{raw_loss.item():.4f}",
             "batch_acc": f"{accuracy:.4f}",
             "running_acc": f"{running_acc/total_samples:.4f}",
             "grad": f"{current_grad_norm:.4f}",
         })
+
+    if len(train_dataloader) % accumulation_steps != 0:
+         optimizer.step()
+         optimizer.zero_grad()
     
     avg_loss = running_loss / total_samples
     avg_acc = running_acc / total_samples

@@ -93,7 +93,7 @@ def main():
     early_stop_count = 0
     
     for epoch in range(TrainingConfigs.num_training_epochs):
-        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad=TrainingConfigs.max_grad)
+        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc=config.train.grad_acc, max_grad=TrainingConfigs.max_grad)
         eval_loss, eval_acc = evaluate(model, eval_dataloader, accelerator, epoch)
         
         if eval_loss < best_loss:
