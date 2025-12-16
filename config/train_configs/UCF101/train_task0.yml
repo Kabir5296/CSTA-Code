@@ -20,9 +20,9 @@ loss:
   calculate_distil_loss: False
   calculate_lt_ls_loss: False
   count_relations: False
-  miu_d: 0.15
-  miu_t: 0.15
-  miu_s: 0.15
+  miu_d: 0.5
+  miu_t: 0.3
+  miu_s: 0.3
   lambda_1: 0.2
   lambda_2: 0.2
   K: 5

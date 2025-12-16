@@ -97,29 +97,20 @@ class TemporalMultiheadCrossAttention(nn.Module):
         super().__init__()
         self.dim = dim
         self.msa = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-
+        
     def forward(self, query, key, value, B, T, num_patches):
-        """
-        Applies Cross Attention on the Temporal Dimension.
-        Query: [B*T, N+1, D] (Usually current task adapter output)
-        Key/Val: [B*T, N+1, D] (Usually prev task adapter output)
-        """        
-        q = query.reshape(B, T, num_patches+1, self.dim)[:, :, 1:, :] # [B, T, N, D]
-        k = key.reshape(B, T, num_patches+1, self.dim)[:, :, 1:, :]
-        v = value.reshape(B, T, num_patches+1, self.dim)[:, :, 1:, :]
-        
-        # 2. Reshape for Temporal: [B*N, T, D]
+        q = query.reshape(B, T, num_patches+1, self.dim)[:, :, 1:, :] 
+
+        T_total = key.shape[0] // B
+        k = key.reshape(B, T_total, num_patches+1, self.dim)[:, :, 1:, :]
+        v = value.reshape(B, T_total, num_patches+1, self.dim)[:, :, 1:, :]
+
         q = q.permute(0, 2, 1, 3).reshape(-1, T, self.dim)
-        k = k.permute(0, 2, 1, 3).reshape(-1, T, self.dim)
-        v = v.permute(0, 2, 1, 3).reshape(-1, T, self.dim)
-        
-        # 3. Cross Attention
+        k = k.permute(0, 2, 1, 3).reshape(-1, T_total, self.dim)
+        v = v.permute(0, 2, 1, 3).reshape(-1, T_total, self.dim)
         attn_output, _ = self.msa(query=q, key=k, value=v)
-        
-        # 4. Reshape Back
+
         attn_output = attn_output.reshape(B, num_patches, T, self.dim).permute(0, 2, 1, 3)
-        
-        # 5. Add Zero CLS Residual
         cls_residual = torch.zeros((B, T, 1, self.dim), device=query.device, dtype=query.dtype)
         output = torch.cat([cls_residual, attn_output], dim=2)
         

@@ -117,16 +117,14 @@ def main():
 
         if epoch > TrainingConfigs.warmup_epochs:
             scheduler.step()
-
-        if eval_acc*100 > 93.0:
-            logging.info(f"Reached desired accuracy of 93.0%, stopping training.")
+        if eval_acc*100 > 93:
             break
 
     accelerator.wait_for_everyone()
     unwrapped_model = accelerator.unwrap_model(model)
-    torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model_phase1.pth'))
+    torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model.pth'))
 
-    eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
+    eval_loss, eval_acc = evaluate(unwrapped_model, test_dataloader, accelerator, epoch)
     logging.info(f"Phase 1 Test Performance: Loss: {eval_loss:.4f}, Accuracy: {eval_acc:.4f}")
 
     if config.fine_tune.fine_tune:
@@ -139,35 +137,34 @@ def main():
 
         for param in model.parameters():
             param.requires_grad = False
-        
-        ft_params = []
+        model.calculate_distil_loss = False
+        model.calculate_lt_ls_loss = False
+
         for classifier in model.classifiers:
-            classifier.train()
             for param in classifier.parameters():
                 param.requires_grad = True
-                ft_params.append(param)
                 
-        ft_optimizer = optim.AdamW(ft_params, lr=float(TrainingConfigs.learning_rate) * 0.1, weight_decay=float(TrainingConfigs.weight_decay))
+        ft_optimizer = optim.AdamW(model.parameters(), lr=float(config.fine_tune.ft_learning_rate), weight_decay=float(config.fine_tune.ft_weight_decay))
         dataset = get_video_dataset_for_ft(config)
         ft_train_dataset = dataset["train"]
         
         ft_dataloader = DataLoader(ft_train_dataset, 
-                            batch_size=5, # 5-shot balancing
+                            batch_size=5,
                             shuffle=True, 
                             pin_memory=TrainingConfigs.dataloader_pin_memory, 
                             num_workers=TrainingConfigs.dataloader_num_workers
                             )
 
-        model, ft_optimizer, ft_dataloader = accelerator.prepare(model, ft_optimizer, ft_dataloader)
+        model, ft_optimizer, ft_dataloader, test_dataloader = accelerator.prepare(model, ft_optimizer, ft_dataloader, test_dataloader)
 
         for epoch in range(config.fine_tune.ft_epochs):
             train_loss, _ = train_epoch(model, ft_dataloader, ft_optimizer, accelerator, epoch, grad_acc=1, max_grad=TrainingConfigs.max_grad)
+            eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
 
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
         torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model_after_ft.pth'))
 
-        eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
         logging.info(f"Final Test Performance (After FT): Loss: {eval_loss:.4f}, Accuracy: {eval_acc:.4f}")
         
     unwrapped_model.save_feature_banks(train_dataloader, accelerator, config.loss.memory_bandk_dir)

@@ -237,22 +237,25 @@ class CSTA(nn.Module):
         logging.info(f"Model architecture prepared: {self.model_attributes['adapters_per_block']} adapter(s), {self.model_attributes['total_classifiers']} classifier(s).")
 
     def freeze_all_but_last(self):
-        for classifier in self.classifiers[:-1]:
-            for param in classifier.parameters():
-                param.requires_grad = False
+        for params in self.parameters():
+            params.requires_grad = False
+            
+        for param in self.classifiers[-1].parameters():
+            param.requires_grad = True
+        
+        for block_idx, block in enumerate(self.blocks):
+            for param in block.temporal_cross_attention.parameters():
+                param.requires_grad = True
+            for param in block.spatial_cross_attention.parameters():
+                param.requires_grad = True
+                
+            if len(self.temporal_adapters[block_idx]) > 0:
+                for param in self.temporal_adapters[block_idx][-1].parameters():
+                    param.requires_grad = True
 
-        for block in self.blocks:
-            for param in block.parameters():
-                param.requires_grad = False
-
-        for block_idx in range(len(self.blocks)):
-            for adapter in self.temporal_adapters[block_idx][:-1]:
-                for param in adapter.parameters():
-                    param.requires_grad = False
-
-            for adapter in self.spatial_adapters[block_idx][:-1]:
-                for param in adapter.parameters():
-                    param.requires_grad = False
+            if len(self.spatial_adapters[block_idx]) > 0:
+                for param in self.spatial_adapters[block_idx][-1].parameters():
+                    param.requires_grad = True
 
     def run_classifier_head(self, last_hidden_layer, B, T):
         x = last_hidden_layer
@@ -380,6 +383,18 @@ class CSTA(nn.Module):
             
             # Capture Temporal Feature (Tn) at last layer
             if is_last_layer:
+                x_reshaped = x.view(B, T, self.num_patches + 1, self.dim)
+                cls_token = x_reshaped[:, :, 0, :]                          # [B, T, D]
+                patches = x_reshaped[:, :, 1:, :]                           # [B, T, N, D]
+                cls_token_avg = torch.mean(cls_token, dim=1, keepdim=True)  # [B, 1, D]
+                cls_token_avg = cls_token_avg.repeat(1, T, 1)               # [B, T, D]
+                
+                new_cls = cls_token_avg.unsqueeze(2)                        # [B, T, 1, D]
+                x_for_mlp = torch.cat([new_cls, patches], dim=2)            # [B, T, N+1, D]
+                x_for_mlp = x_for_mlp.view(B * T, self.num_patches + 1, self.dim)
+                
+                # Final MLP
+                x = x_for_mlp + block.mlp(block.norm_mlp(x_for_mlp))
                 t_feat_curr = x.clone()
 
             # Spatial Branch
@@ -440,6 +455,18 @@ class CSTA(nn.Module):
                         x_old = x_old + block_t_msa_old
                     
                     if is_last_layer:
+                        x_reshaped_old = x_old.view(B, T, self.num_patches + 1, self.dim)
+                        cls_token_old = x_reshaped_old[:, :, 0, :]                              # [B, T, D]
+                        patches_old = x_reshaped_old[:, :, 1:, :]                               # [B, T, N, D]
+                        cls_token_avg_old = torch.mean(cls_token_old, dim=1, keepdim=True)      # [B, 1, D]
+                        cls_token_avg_old = cls_token_avg_old.repeat(1, T, 1)                   # [B, T, D]
+                        
+                        new_cls_old = cls_token_avg_old.unsqueeze(2)                            # [B, T, 1, D]
+                        x_old_for_mlp = torch.cat([new_cls_old, patches_old], dim=2)            # [B, T, N+1, D]
+                        x_old_for_mlp = x_old_for_mlp.view(B * T, self.num_patches + 1, self.dim)
+                        
+                        # Final MLP
+                        x_old = x_old_for_mlp + block.mlp(block.norm_mlp(x_old_for_mlp))
                         t_feat_old = x_old.clone()
 
                     # same for spatial

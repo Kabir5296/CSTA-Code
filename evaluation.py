@@ -45,8 +45,58 @@ def main():
     model.prepare_architecture_for_current_task()
     logging.info(f"\n\nDO NOT WORRY ABOUT THE CHECKPOINT LOADING. \nWe're now loading the actual checkpoint from {config.checkpoints.current_checkpoint}")
     model.load_weights(config.checkpoints.current_checkpoint)
-    
-    if config.task.task_n == 2:
+
+    if config.task.task_n == 3:
+        # load test datasets (hopefully i didn't mess up the labels)
+        dataset=get_eval_dataset(config)
+        task_0_test, task_1_test, task_2_test, task_3_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['task_3_test'], dataset['id2label'], dataset['label2id']
+        
+        task_0_test_datloader = DataLoader(task_0_test, 
+                                    batch_size=EvalConfig.test_batch_size, 
+                                    shuffle=False,
+                                    pin_memory=EvalConfig.dataloader_pin_memory, 
+                                    persistent_workers=EvalConfig.dataloader_persistent_workers,
+                                    num_workers=EvalConfig.dataloader_num_workers,
+                                    )
+        task_1_test_datloader = DataLoader(task_1_test, 
+                                    batch_size=EvalConfig.test_batch_size, 
+                                    shuffle=False,
+                                    pin_memory=EvalConfig.dataloader_pin_memory, 
+                                    persistent_workers=EvalConfig.dataloader_persistent_workers,
+                                    num_workers=EvalConfig.dataloader_num_workers,
+                                    )
+        task_2_test_datloader = DataLoader(task_2_test, 
+                                    batch_size=EvalConfig.test_batch_size, 
+                                    shuffle=False,
+                                    pin_memory=EvalConfig.dataloader_pin_memory, 
+                                    persistent_workers=EvalConfig.dataloader_persistent_workers,
+                                    num_workers=EvalConfig.dataloader_num_workers,
+                                    )
+        task_3_test_datloader = DataLoader(task_3_test, 
+                                    batch_size=EvalConfig.test_batch_size, 
+                                    shuffle=False,
+                                    pin_memory=EvalConfig.dataloader_pin_memory, 
+                                    persistent_workers=EvalConfig.dataloader_persistent_workers,
+                                    num_workers=EvalConfig.dataloader_num_workers,
+                                    )
+
+        accelerator = Accelerator()
+        model, task_0_test_datloader, task_1_test_datloader, task_2_test_datloader, task_3_test_datloader = accelerator.prepare(
+                model, task_0_test_datloader, task_1_test_datloader, task_2_test_datloader, task_3_test_datloader
+            )
+        
+        _, task_0_acc = test(model, task_0_test_datloader, accelerator, task_n=0)
+        _, task_1_acc = test(model, task_1_test_datloader, accelerator, task_n=1)
+        _, task_2_acc = test(model, task_2_test_datloader, accelerator, task_n=2)
+        _, task_3_acc = test(model, task_3_test_datloader, accelerator, task_n=3)
+        
+        logging.info(f"\n\n===========================================================================================================")
+        logging.info(f"Model Used: {config.checkpoints.current_checkpoint}")
+        logging.info(f"Final Accuracy: task_0: {task_0_acc:.4f}, task_1: {task_1_acc:.4f}, task_2: {task_2_acc:.4f}, task_3: {task_3_acc:.4f}")
+        logging.info(f"Average Accuracy: {((task_0_acc+task_1_acc+task_2_acc+task_3_acc) / 4):.4f}")
+        logging.info(f"\n\n===========================================================================================================")
+            
+    elif config.task.task_n == 2:
         # load test datasets (hopefully i didn't mess up the labels)
         dataset=get_eval_dataset(config)
         task_0_test, task_1_test, task_2_test, id2label, label2id = dataset['task_0_test'], dataset['task_1_test'], dataset['task_2_test'], dataset['id2label'], dataset['label2id']

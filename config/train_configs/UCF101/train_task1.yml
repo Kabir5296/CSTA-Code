@@ -20,11 +20,11 @@ loss:
   calculate_distil_loss: True
   calculate_lt_ls_loss: True
   count_relations: True
-  miu_d: 0.15
+  miu_d: 0.5
   miu_t: 0.15
   miu_s: 0.15
-  lambda_1: 0.2
-  lambda_2: 0.2
+  lambda_1: 0.3
+  lambda_2: 0.3
   K: 5
   temporal_features_path: model_save/pretrained/bank/task_0_model/temporal_feats_task0.pt
   spatial_features_path: model_save/pretrained/bank/task_0_model/spatial_feats_task0.pt
@@ -63,4 +63,6 @@ fine_tune:
   train_data_0: DATA/UCF101/tasks/task_0/fine_tune.csv
   train_data_1: DATA/UCF101/tasks/task_1/fine_tune.csv
   task_n_ft: 0
-  ft_epochs: 20
+  ft_learning_rate: 1e-5
+  ft_weight_decay: 0.0
+  ft_epochs: 5

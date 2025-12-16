@@ -73,7 +73,7 @@ def get_video_dataset_for_ft(config):
             "id2label" : id2label,
             "label2id" : label2id,
         }
-    elif ft_task_n == 1:
+    elif ft_task_n == 2:
         training_csv_path_0 = config.fine_tune.train_data_0
         training_csv_path_1 = config.fine_tune.train_data_1   
         training_csv_path_2 = config.fine_tune.train_data_2
@@ -191,8 +191,6 @@ class VideoDataset(Dataset):
         }
         
 def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc = 1, max_grad = 3):
-    model.train()
-
     running_acc = 0.0
     total_samples = num_steps_with_grad = 0
     running_grad_norm = current_grad_norm = 0.0 

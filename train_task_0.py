@@ -92,6 +92,7 @@ def main():
     best_acc = 0.0
     early_stop_count = 0
     
+    model.train()
     for epoch in range(TrainingConfigs.num_training_epochs):
         train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc=config.train.grad_acc, max_grad=TrainingConfigs.max_grad)
         eval_loss, eval_acc = evaluate(model, eval_dataloader, accelerator, epoch)
@@ -128,7 +129,8 @@ def main():
     unwrapped_model = accelerator.unwrap_model(model)
     torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model.pth'))
     
-    eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
+    unwrapped_model.eval()
+    eval_loss, eval_acc = evaluate(unwrapped_model, test_dataloader, accelerator, epoch)
     logging.info(
         f"Test Performance: "
         f"Average Loss: {eval_loss:.4f}, "

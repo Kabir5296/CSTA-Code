@@ -17,35 +17,41 @@ module load CUDA
 
 OUTPUT_FOLDER="model_save/pretrained"
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task0.yml"
+# TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task0.yml"
 
-python evaluation.py \
-    --config "$EVAL_CONFIG_FILE" \
-    --save_results "$OUTPUT_FOLDER"
+# python train_task_0.py \
+#     --config "$TRAIN_CONFIG_FILE" \
+#     --save_folder "$OUTPUT_FOLDER"
 
-TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1.yml"
+# EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task0.yml"
 
-python fine_tune.py \
-    --config "$TRAIN_CONFIG_FILE" \
-    --save_folder "$OUTPUT_FOLDER"
+# python evaluation.py \
+#     --config "$EVAL_CONFIG_FILE" \
+#     --save_results "$OUTPUT_FOLDER"
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1.yml"
+# TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task1.yml"
 
-python evaluation.py \
-    --config "$EVAL_CONFIG_FILE" \
-    --save_results "$OUTPUT_FOLDER"
+# python fine_tune.py \
+#     --config "$TRAIN_CONFIG_FILE" \
+#     --save_folder "$OUTPUT_FOLDER"
 
-TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task2.yml"
+# EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task1.yml"
 
-python fine_tune.py \
-    --config "$TRAIN_CONFIG_FILE" \
-    --save_folder "$OUTPUT_FOLDER"
+# python evaluation.py \
+#     --config "$EVAL_CONFIG_FILE" \
+#     --save_results "$OUTPUT_FOLDER"
 
-EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2.yml"
+# TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task2.yml"
 
-python evaluation.py \
-    --config "$EVAL_CONFIG_FILE" \
-    --save_results "$OUTPUT_FOLDER"
+# python fine_tune.py \
+#     --config "$TRAIN_CONFIG_FILE" \
+#     --save_folder "$OUTPUT_FOLDER"
+
+# EVAL_CONFIG_FILE="config/eval_configs/UCF101/eval_task2.yml"
+
+# python evaluation.py \
+#     --config "$EVAL_CONFIG_FILE" \
+#     --save_results "$OUTPUT_FOLDER"
 
 TRAIN_CONFIG_FILE="config/train_configs/UCF101/train_task3.yml"
 

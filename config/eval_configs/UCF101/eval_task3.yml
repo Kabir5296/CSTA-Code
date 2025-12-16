@@ -33,11 +33,11 @@ loss:
   calculate_distil_loss: False
   calculate_lt_ls_loss: False
   count_relations: False
-  miu_d: 0.15
-  miu_t: 0.15
-  miu_s: 0.15
-  lambda_1: 0.2
-  lambda_2: 0.2
+  miu_d: 0.8
+  miu_t: 0.3
+  miu_s: 0.3
+  lambda_1: 0.3
+  lambda_2: 0.3
   K: 5
   temporal_features_path: model_save/pretrained/bank/task_2_model/temporal_feats_task1.pt
   spatial_features_path: model_save/pretrained/bank/task_2_model/spatial_feats_task1.pt
