@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/evaluation.py", line 154, in <module>
+    main()
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/evaluation.py", line 93, in main
+    dataset=get_eval_dataset(config)
+  File "/mmfs1/course/2025/fall/ds/677/amr239/ak3535/csta-implementation/src/utils.py", line 64, in get_eval_dataset
+    with open(config.data.label2id_path, "r") as f:
+AttributeError: 'CSTAConfig' object has no attribute 'label2id_path'

@@ -1,0 +1,69 @@
+INFO:root:
+
+Training for task 2 starting on: 15/12/2025, 15:54:47
+
+INFO:root:The config is being used from file: config/train_configs/UCF101/train_task2.yml
+INFO:root:
+Checking for pre-calculated features and relations...
+
+INFO:root:Memory bank found. Starting current task: 2.
+
+
+INFO:root:Current task: 2
+, Total adapters: 2, Total classifiers: 3.
+INFO:root:Expected adapters: 2, Expected classifiers: 3.
+INFO:root:Task 2: Loading checkpoint from model_save/pretrained/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Loading weights from: model_save/pretrained/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Task 2: Freezing all parameters except for the new components.
+INFO:root:Model architecture prepared: 2 adapter(s), 3 classifier(s).
+INFO:root:Model config: model_name: csta, dim: 768, num_heads: 12, num_layers: 12
+
+
+INFO:root:| Training Epoch 0:: | | Average Loss: 5.3164, | | Average Accuracy: 0.1212, | | Avg Grad Norm: 38.0125, | | Samples: 528 | | CE Loss: 4.7695 | | Distill Loss: 0.5198 | | Lt, Ls Loss: 0.4366, 0.0001 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 0:: | | Average Loss: 1.9662, | | Average Accuracy: 0.5632, | | Samples: 87 | | CE Loss: 1.4920 | | Distill Loss: 0.3723 | | Lt, Ls Loss: 0.5876, 0.0001 | 
+INFO:root:| Training Epoch 1:: | | Average Loss: 1.6772, | | Average Accuracy: 0.5758, | | Avg Grad Norm: 32.9211, | | Samples: 528 | | CE Loss: 1.1714 | | Distill Loss: 0.4161 | | Lt, Ls Loss: 0.5763, 0.0001 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 1:: | | Average Loss: 1.4228, | | Average Accuracy: 0.6092, | | Samples: 87 | | CE Loss: 0.9524 | | Distill Loss: 0.3996 | | Lt, Ls Loss: 0.5023, 0.0001 | 
+INFO:root:| Training Epoch 2:: | | Average Loss: 1.2594, | | Average Accuracy: 0.7424, | | Avg Grad Norm: 18.2916, | | Samples: 528 | | CE Loss: 0.7296 | | Distill Loss: 0.4657 | | Lt, Ls Loss: 0.5239, 0.0001 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 2:: | | Average Loss: 1.1933, | | Average Accuracy: 0.7011, | | Samples: 87 | | CE Loss: 0.6881 | | Distill Loss: 0.4364 | | Lt, Ls Loss: 0.5198, 0.0001 | 
+INFO:root:| Training Epoch 3:: | | Average Loss: 1.3576, | | Average Accuracy: 0.5966, | | Avg Grad Norm: 33.0449, | | Samples: 528 | | CE Loss: 0.9698 | | Distill Loss: 0.3068 | | Lt, Ls Loss: 0.4744, 0.0001 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 3:: | | Average Loss: 1.0452, | | Average Accuracy: 0.8046, | | Samples: 87 | | CE Loss: 0.5636 | | Distill Loss: 0.4167 | | Lt, Ls Loss: 0.4941, 0.0002 | 
+INFO:root:| Training Epoch 4:: | | Average Loss: 1.0042, | | Average Accuracy: 0.7765, | | Avg Grad Norm: 17.3197, | | Samples: 528 | | CE Loss: 0.6038 | | Distill Loss: 0.3373 | | Lt, Ls Loss: 0.4348, 0.0002 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 4:: | | Average Loss: 1.0574, | | Average Accuracy: 0.8391, | | Samples: 87 | | CE Loss: 0.5212 | | Distill Loss: 0.4672 | | Lt, Ls Loss: 0.5413, 0.0002 | 
+INFO:root:| Training Epoch 5:: | | Average Loss: 0.8990, | | Average Accuracy: 0.8580, | | Avg Grad Norm: 10.6107, | | Samples: 528 | | CE Loss: 0.4820 | | Distill Loss: 0.3625 | | Lt, Ls Loss: 0.4231, 0.0002 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 5:: | | Average Loss: 0.9358, | | Average Accuracy: 0.8506, | | Samples: 87 | | CE Loss: 0.4297 | | Distill Loss: 0.4930 | | Lt, Ls Loss: 0.3724, 0.0002 | 
+INFO:root:| Training Epoch 6:: | | Average Loss: 0.6926, | | Average Accuracy: 0.9299, | | Avg Grad Norm: 9.2045, | | Samples: 528 | | CE Loss: 0.3420 | | Distill Loss: 0.3127 | | Lt, Ls Loss: 0.3349, 0.0002 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 6:: | | Average Loss: 0.6847, | | Average Accuracy: 0.9080, | | Samples: 87 | | CE Loss: 0.3433 | | Distill Loss: 0.3074 | | Lt, Ls Loss: 0.3182, 0.0002 | 
+INFO:root:| Training Epoch 7:: | | Average Loss: 0.5467, | | Average Accuracy: 0.9621, | | Avg Grad Norm: 8.9691, | | Samples: 528 | | CE Loss: 0.2687 | | Distill Loss: 0.2335 | | Lt, Ls Loss: 0.3039, 0.0002 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 7:: | | Average Loss: 0.5508, | | Average Accuracy: 0.9655, | | Samples: 87 | | CE Loss: 0.2533 | | Distill Loss: 0.2638 | | Lt, Ls Loss: 0.2881, 0.0002 | 
+INFO:root:| Evaluation Epoch 7:: | | Average Loss: 0.5572, | | Average Accuracy: 0.9780, | | Samples: 91 | | CE Loss: 0.2657 | | Distill Loss: 0.2513 | | Lt, Ls Loss: 0.3012, 0.0002 | 
+INFO:root:Phase 1 Test Performance: Loss: 0.5572, Accuracy: 0.9780
+INFO:root:
+
+Starting Fine-tuning for task 1.
+
+INFO:root:| Training Epoch 0:: | | Average Loss: 8.8026, | | Average Accuracy: 0.1016, | | Avg Grad Norm: 88.2225, | | Samples: 305 | | CE Loss: 8.8026 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 0:: | | Average Loss: 0.9717, | | Average Accuracy: 0.3846, | | Samples: 91 | | CE Loss: 0.9717 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 1:: | | Average Loss: 7.6110, | | Average Accuracy: 0.1475, | | Avg Grad Norm: 78.1596, | | Samples: 305 | | CE Loss: 7.6110 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 1:: | | Average Loss: 0.7069, | | Average Accuracy: 0.6044, | | Samples: 91 | | CE Loss: 0.7069 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 2:: | | Average Loss: 6.5248, | | Average Accuracy: 0.2230, | | Avg Grad Norm: 70.2424, | | Samples: 305 | | CE Loss: 6.5248 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 2:: | | Average Loss: 0.6198, | | Average Accuracy: 0.6923, | | Samples: 91 | | CE Loss: 0.6198 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 3:: | | Average Loss: 5.5542, | | Average Accuracy: 0.3213, | | Avg Grad Norm: 62.6878, | | Samples: 305 | | CE Loss: 5.5542 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 3:: | | Average Loss: 0.5862, | | Average Accuracy: 0.7582, | | Samples: 91 | | CE Loss: 0.5862 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 4:: | | Average Loss: 4.7297, | | Average Accuracy: 0.3672, | | Avg Grad Norm: 56.1778, | | Samples: 305 | | CE Loss: 4.7297 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 4:: | | Average Loss: 0.5921, | | Average Accuracy: 0.8132, | | Samples: 91 | | CE Loss: 0.5921 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 5:: | | Average Loss: 4.0357, | | Average Accuracy: 0.4197, | | Avg Grad Norm: 50.9784, | | Samples: 305 | | CE Loss: 4.0357 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 5:: | | Average Loss: 0.6233, | | Average Accuracy: 0.9121, | | Samples: 91 | | CE Loss: 0.6233 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 6:: | | Average Loss: 3.4530, | | Average Accuracy: 0.4754, | | Avg Grad Norm: 46.2695, | | Samples: 305 | | CE Loss: 3.4530 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 6:: | | Average Loss: 0.6746, | | Average Accuracy: 0.8901, | | Samples: 91 | | CE Loss: 0.6746 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 7:: | | Average Loss: 2.9257, | | Average Accuracy: 0.5180, | | Avg Grad Norm: 43.0304, | | Samples: 305 | | CE Loss: 2.9257 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 7:: | | Average Loss: 0.7209, | | Average Accuracy: 0.9011, | | Samples: 91 | | CE Loss: 0.7209 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 8:: | | Average Loss: 2.4890, | | Average Accuracy: 0.5639, | | Avg Grad Norm: 40.8638, | | Samples: 305 | | CE Loss: 2.4890 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 8:: | | Average Loss: 0.7680, | | Average Accuracy: 0.8681, | | Samples: 91 | | CE Loss: 0.7680 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:| Training Epoch 9:: | | Average Loss: 2.0974, | | Average Accuracy: 0.6000, | | Avg Grad Norm: 38.6401, | | Samples: 305 | | CE Loss: 2.0974 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 9:: | | Average Loss: 0.8078, | | Average Accuracy: 0.8462, | | Samples: 91 | | CE Loss: 0.8078 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:Final Test Performance (After FT): Loss: 0.8078, Accuracy: 0.8462
+INFO:root:Extracting features and relations for memory bank...
+INFO:root:Saved Spatial Features: model_save/pretrained/bank/task_2_model/spatial_feats_task2.pt (torch.Size([528, 768]))
+INFO:root:Saved Temporal Features: model_save/pretrained/bank/task_2_model/temporal_feats_task2.pt (torch.Size([528, 768]))
+INFO:root:Saved Spatial Relations: model_save/pretrained/bank/task_2_model/spatial_relations_task2.json (torch.Size([528, 52]))
+INFO:root:Saved Temporal Relations: model_save/pretrained/bank/task_2_model/temporal_relations_task2.json (torch.Size([528, 52]))

@@ -12,10 +12,10 @@ def get_config(file_name):
         config=yaml.safe_load(f)
     return dict_to_object(config)
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torchvision import transforms
 import pandas as pd
-import torch, os, random, logging
+import torch, os, json, random, logging
 import numpy as np
 from tqdm import tqdm
 from torchvision.io import read_video
@@ -28,18 +28,14 @@ def set_all_seeds(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def get_video_dataset(config):
+def get_video_dataset(config, task_n=None):
     training_csv_path = config.data.train_csv
     valid_csv_path = config.data.valid_csv
     test_csv_path = config.data.test_csv
-    train = pd.read_csv(training_csv_path)
 
-    all_labels = sorted(train['label'].unique().tolist())
-    id2label = {}
-    label2id = {}
-    for index, label in enumerate(all_labels):
-        id2label[index] = label
-        label2id[label] = index
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
     
     return {
         "train" : VideoDataset(config=config, csv_path=training_csv_path, label2id=label2id, split="train"),
@@ -48,6 +44,94 @@ def get_video_dataset(config):
         "id2label" : id2label,
         "label2id" : label2id,
     }
+    
+def get_video_dataset_for_ft(config):
+    ft_task_n = config.fine_tune.task_n_ft
+    
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
+    
+    if ft_task_n == 0:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif ft_task_n == 1:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1   
+        training_csv_path_2 = config.fine_tune.train_data_2      
+        
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_2, label2id=label2id, split="train")]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif ft_task_n == 2:
+        training_csv_path_0 = config.fine_tune.train_data_0
+        training_csv_path_1 = config.fine_tune.train_data_1   
+        training_csv_path_2 = config.fine_tune.train_data_2
+        training_csv_path_3 = config.fine_tune.train_data_3      
+        
+        return {
+            "train" : ConcatDataset([VideoDataset(config=config, csv_path=training_csv_path_0, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_1, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_2, label2id=label2id, split="train"),
+                    VideoDataset(config=config, csv_path=training_csv_path_3, label2id=label2id, split="train"),
+                    ]),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
+    
+def get_eval_dataset(config):
+    current_task = config.task.task_n
+
+    with open(config.data.label2id_path, "r") as f:
+        label2id = json.load(f)
+    id2label = {v: k for k, v in label2id.items()}
+    
+    if current_task == 2:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    elif current_task == 3:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "task_2_test" : VideoDataset(config=config, csv_path=config.data.task_2.test_csv, label2id=label2id, split="test"),
+            "task_3_test" : VideoDataset(config=config, csv_path=config.data.task_3.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 1:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "task_1_test" : VideoDataset(config=config, csv_path=config.data.task_1.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+        
+    elif current_task == 0:
+        return {
+            "task_0_test" : VideoDataset(config=config, csv_path=config.data.task_0.test_csv, label2id=label2id, split="test"),
+            "id2label" : id2label,
+            "label2id" : label2id,
+        }
+    else:
+        raise NotImplementedError
 
 class VideoDataset(Dataset):
     def __init__(self, config, csv_path, label2id ,split="train"):
@@ -63,7 +147,7 @@ class VideoDataset(Dataset):
         
         self.transform = transforms.Compose([
             transforms.Resize((self.img_size, self.img_size)),
-            transforms.Normalize(mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             # transforms.RandomGrayscale(0.1),
             # transforms.RandomRotation((-15,15)),
             # transforms.RandomErasing(0.1),
@@ -106,9 +190,7 @@ class VideoDataset(Dataset):
             "label": self.label2id[label],
         }
         
-def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad = 3):
-    model.train()
-
+def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc = 1, max_grad = 3):
     running_acc = 0.0
     total_samples = num_steps_with_grad = 0
     running_grad_norm = current_grad_norm = 0.0 
@@ -124,32 +206,33 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad
         labels = batch["label"]
         batch_size = labels.size(0)
         
-        with accelerator.accumulate(model):
-            outputs = model(input_frames, labels)
-            loss = outputs.loss
-            
-            ce_loss = outputs.ce_loss
-            distil_loss = outputs.distil_loss
-            lt_loss = outputs.lt_loss
-            ls_loss = outputs.ls_loss
-            
-            predictions = outputs.predictions
-            correct = (predictions == labels).sum().item()
-            accuracy = correct / batch_size
+        outputs = model(input_frames, labels)
+        raw_loss = outputs.loss
+        
+        ce_loss = outputs.ce_loss
+        distil_loss = outputs.distil_loss
+        lt_loss = outputs.lt_loss
+        ls_loss = outputs.ls_loss
+        
+        predictions = outputs.predictions
+        correct = (predictions == labels).sum().item()
+        accuracy = correct / batch_size
 
-            accelerator.backward(loss)
-            
+        accumulation_steps = grad_acc
+        loss = raw_loss / accumulation_steps
+        accelerator.backward(loss)
+        
+        if (batch_idx + 1) % accumulation_steps == 0:
             if accelerator.sync_gradients:
                 grad_norm = accelerator.clip_grad_norm_(model.parameters(), float(max_grad))
                 if grad_norm is not None:
                     current_grad_norm = grad_norm.item()
                     running_grad_norm += current_grad_norm
                     num_steps_with_grad += 1
-
             optimizer.step()
             optimizer.zero_grad()
         
-        running_loss += loss.item() * batch_size
+        running_loss += raw_loss.item() * batch_size
         
         running_ce_loss += ce_loss.item() * batch_size
         running_distil_loss += distil_loss.item() * batch_size if distil_loss is not None else 0.0
@@ -161,11 +244,15 @@ def train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad
         
         progress_bar.update(1)
         progress_bar.set_postfix({
-            "loss": f"{loss.item():.4f}",
+            "loss": f"{raw_loss.item():.4f}",
             "batch_acc": f"{accuracy:.4f}",
             "running_acc": f"{running_acc/total_samples:.4f}",
             "grad": f"{current_grad_norm:.4f}",
         })
+
+    if len(train_dataloader) % accumulation_steps != 0:
+         optimizer.step()
+         optimizer.zero_grad()
     
     avg_loss = running_loss / total_samples
     avg_acc = running_acc / total_samples
@@ -257,3 +344,68 @@ def evaluate(model, eval_dataloader, accelerator, epoch):
     )
     
     return avg_loss, avg_acc
+
+def test(model, eval_dataloader, accelerator, task_n):
+    model.eval()
+    
+    running_acc = 0.0
+    total_samples = 0
+    running_loss = running_ce_loss = running_distil_loss = running_lt_loss = running_ls_loss = 0.0
+    
+    progress_bar = tqdm(
+        total=len(eval_dataloader),
+        disable=not accelerator.is_local_main_process,
+        desc=f"Test on task: {task_n}"
+    )
+    
+    with torch.no_grad():
+        for batch in eval_dataloader:
+            input_frames = batch["input_frames"]
+            labels = batch["label"]
+            batch_size = labels.size(0)
+
+            outputs = model(input_frames, labels)
+            loss = outputs.loss
+            
+            predictions = outputs.predictions
+            correct = (predictions == labels).sum().item()
+            accuracy = correct / batch_size
+            
+            running_loss += loss.item() * batch_size
+            
+            running_acc += correct
+            total_samples += batch_size
+            
+            progress_bar.update(1)
+            progress_bar.set_postfix({
+                "loss": f"{loss.item():.4f}",
+                "batch_acc": f"{accuracy:.4f}",
+                "running_acc": f"{running_acc/total_samples:.4f}"
+            })
+    
+    avg_loss = running_loss / total_samples
+    avg_acc = running_acc / total_samples
+
+    progress_bar.close()
+    logging.info(
+        f"| Task: {task_n} | "
+        f"| Average Loss: {avg_loss:.4f}, | "
+        f"| Average Accuracy: {avg_acc:.4f}, | "
+        f"| Samples: {total_samples} | "
+    )
+    
+    return avg_loss, avg_acc
+
+def get_model_info(model):
+    # 1. Model Parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # 2. Model Size (Theoretical)
+    param_size = sum(p.numel() * p.element_size() for p in model.parameters())
+    buffer_size = sum(b.numel() * b.element_size() for b in model.buffers())
+    size_mb = (param_size + buffer_size) / 1024**2
+    
+    print(f"Total Params:     {total_params / 1e6:.2f}M")
+    print(f"Trainable Params: {trainable_params / 1e6:.2f}M")
+    print(f"Model Size (MB):  {size_mb:.2f} MB")

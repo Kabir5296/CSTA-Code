@@ -13,20 +13,23 @@ data:
   root_dir: DATA/UCF101
   train_csv: DATA/UCF101/tasks/task_0/train.csv
   test_csv: DATA/UCF101/tasks/task_0/test.csv
-  valid_csv: DATA/UCF101/tasks/task_0/valid.csv
+  valid_csv: DATA/UCF101/tasks/task_0/val.csv
+  label2id_path: DATA/UCF101/tasks/label2id.json
 
 loss:
   calculate_distil_loss: False
   calculate_lt_ls_loss: False
   count_relations: False
-  miu_d: 0.15
-  miu_t: 0.15
-  miu_s: 0.15
+  miu_d: 0.5
+  miu_t: 0.3
+  miu_s: 0.3
   lambda_1: 0.2
+  lambda_2: 0.2
   K: 5
   count_relations: False
   temporal_relations_path: null
   spatial_relations_path: null
+  memory_bandk_dir: model_save/pretrained/bank/task_0_model/
 
 task:
   task_n: 0
@@ -36,14 +39,21 @@ task:
 train:
   random_seed: 42
   num_training_epochs: 10
-  training_batch_size: 7
-  evaluation_batch_size: 7
+  training_batch_size: 16
+  evaluation_batch_size: 16
   dataloader_num_workers: 4
   dataloader_pin_memory: False
   dataloader_persistent_workers: False
   learning_rate: 1e-4
   weight_decay: 1e-4
   eta_min: 1e-10
-  warmup_epochs: 2
-  max_grad: 1.5
-  early_stop_patience: 5
+  grad_acc: 4
+  warmup_epochs: 3
+  max_grad: 2.5
+  early_stop_patience: 4
+
+fine_tune:
+  fine_tune: False
+
+checkpoints:
+  old_checkpoint: model_save/pretrained_timesformer.pth   # pretrained model path

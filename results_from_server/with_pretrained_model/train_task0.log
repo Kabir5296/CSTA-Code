@@ -1,0 +1,19 @@
+INFO:root:
+
+Training for task 0 starting on: 15/12/2025, 03:59:49
+
+INFO:root:The config is being used from file: config/train_configs/UCF101/train_task0.yml
+INFO:root:Model config: model_name: csta, dim: 768, num_heads: 12, num_layers: 12
+INFO:root:Task 0: Loading checkpoint from model_save/pretrained_timesformer.pth
+INFO:root:Loading weights from: model_save/pretrained_timesformer.pth
+INFO:root:Model architecture prepared: 0 adapter(s), 1 classifier(s).
+INFO:root:| Training Epoch 0:: | | Average Loss: 1.0392, | | Average Accuracy: 0.7316, | | Avg Grad Norm: 9.2022, | | Samples: 5205 | | CE Loss: 1.0392 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | | Max Grad Limit: 2.5 | 
+INFO:root:| Evaluation Epoch 0:: | | Average Loss: 0.2094, | | Average Accuracy: 0.9331, | | Samples: 867 | | CE Loss: 0.2094 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:Reached desired accuracy of 93.0%, stopping training.
+INFO:root:| Evaluation Epoch 0:: | | Average Loss: 0.1921, | | Average Accuracy: 0.9340, | | Samples: 894 | | CE Loss: 0.1921 | | Distill Loss: 0.0000 | | Lt, Ls Loss: 0.0000, 0.0000 | 
+INFO:root:Test Performance: Average Loss: 0.1921, Average Accuracy: 0.9340, 
+INFO:root:Extracting features and relations for memory bank...
+INFO:root:Saved Spatial Features: model_save/pretrained/bank/task_0_model/spatial_feats_task0.pt (torch.Size([5205, 768]))
+INFO:root:Saved Temporal Features: model_save/pretrained/bank/task_0_model/temporal_feats_task0.pt (torch.Size([5205, 768]))
+INFO:root:Saved Spatial Relations: model_save/pretrained/bank/task_0_model/spatial_relations_task0.json (torch.Size([5205, 52]))
+INFO:root:Saved Temporal Relations: model_save/pretrained/bank/task_0_model/temporal_relations_task0.json (torch.Size([5205, 52]))

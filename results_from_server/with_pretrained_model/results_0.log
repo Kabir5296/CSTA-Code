@@ -1,0 +1,22 @@
+INFO:root:
+
+Evaluation for model for task 0: 15/12/2025, 04:25:12
+
+INFO:root:The config is being used from file: config/eval_configs/UCF101/eval_task0.yml
+INFO:root:Task 0: Loading checkpoint from model_save/pretrained_timesformer.pth
+INFO:root:Loading weights from: model_save/pretrained_timesformer.pth
+INFO:root:Model architecture prepared: 0 adapter(s), 1 classifier(s).
+INFO:root:
+
+DO NOT WORRY ABOUT THE CHECKPOINT LOADING. 
+We're now loading the actual checkpoint from model_save/pretrained/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Loading weights from: model_save/pretrained/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:| Task: 0 | | Average Loss: 0.1921, | | Average Accuracy: 0.9340, | | Samples: 894 | 
+INFO:root:
+
+=======================================================================================
+INFO:root:Model Used: model_save/pretrained/ucf101/task_0/model/checkpoints/final_model.pth
+INFO:root:Final Accuracy: task_0: 0.9340
+INFO:root:
+
+=======================================================================================

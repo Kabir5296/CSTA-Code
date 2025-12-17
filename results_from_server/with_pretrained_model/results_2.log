@@ -1,0 +1,29 @@
+INFO:root:
+
+Evaluation for model for task 2: 15/12/2025, 16:42:45
+
+INFO:root:The config is being used from file: config/eval_configs/UCF101/eval_task2.yml
+INFO:root:Current task: 2
+, Total adapters: 2, Total classifiers: 3.
+INFO:root:Expected adapters: 2, Expected classifiers: 3.
+INFO:root:Task 2: Loading checkpoint from model_save/pretrained/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Loading weights from: model_save/pretrained/ucf101/task_1/model/checkpoints/final_model_after_ft.pth
+INFO:root:Task 2: Freezing all parameters except for the new components.
+INFO:root:Model architecture prepared: 2 adapter(s), 3 classifier(s).
+INFO:root:
+
+DO NOT WORRY ABOUT THE CHECKPOINT LOADING. 
+We're now loading the actual checkpoint from model_save/pretrained/ucf101/task_2/model/checkpoints/final_model_after_ft.pth
+INFO:root:Loading weights from: model_save/pretrained/ucf101/task_2/model/checkpoints/final_model_after_ft.pth
+INFO:root:| Task: 0 | | Average Loss: 4.2219, | | Average Accuracy: 0.5850, | | Samples: 894 | 
+INFO:root:| Task: 1 | | Average Loss: 2.6069, | | Average Accuracy: 0.5500, | | Samples: 80 | 
+INFO:root:| Task: 2 | | Average Loss: 2.5220, | | Average Accuracy: 0.7363, | | Samples: 91 | 
+INFO:root:
+
+===========================================================================================================
+INFO:root:Model Used: model_save/pretrained/ucf101/task_2/model/checkpoints/final_model_after_ft.pth
+INFO:root:Final Accuracy: task_0: 0.5850, task_1: 0.5500, task_2: 0.7363
+INFO:root:Average Accuracy: 0.6238
+INFO:root:
+
+===========================================================================================================

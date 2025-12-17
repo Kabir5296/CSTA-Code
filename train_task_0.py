@@ -3,10 +3,9 @@ filterwarnings("ignore")
 from src import (
     CSTA, get_config, get_video_dataset, set_all_seeds, train_epoch, evaluate
 )
-import torch
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
-import torch, os, logging, datetime, argparse
+import torch, os, logging, datetime, argparse, shutil
 import torch.optim as optim
 
 def main():
@@ -28,6 +27,9 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(os.path.join(model_save_dir, "checkpoints"), exist_ok=True)
     
+    # copy the config to config folder
+    shutil.copyfile(config_path, f"{save_model_config_dir}/train_config.yml")
+    
     # setup logger
     logging.basicConfig(
         filename=os.path.join(log_dir, "train_task0.log"),
@@ -36,7 +38,7 @@ def main():
     )
     logger = logging.getLogger(__name__)
     logging.info(f"\n\nTraining for task 0 starting on: {datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')}\n")
-    logging.info(f"The config is being used from file: config_path")
+    logging.info(f"The config is being used from file: {config_path}")
     logging.info(f"Model config: model_name: {config.model.model_name}, dim: {config.model.dim}, num_heads: {config.model.num_heads}, num_layers: {config.model.num_layers}")
     
     # create dataset
@@ -74,6 +76,9 @@ def main():
     model = CSTA(config_file=config_path)
     model.prepare_architecture_for_current_task()
     
+    for param in model.parameters():
+        param.requires_grad = True
+    
     # optimizer = optim.SGD(model.parameters(), lr = TrainingConfigs.learning_rate, weight_decay=TrainingConfigs.weight_decay)
     optimizer = optim.AdamW(model.parameters(), lr = float(TrainingConfigs.learning_rate), weight_decay = float(TrainingConfigs.weight_decay))
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=TrainingConfigs.num_training_epochs - TrainingConfigs.warmup_epochs, eta_min=float(TrainingConfigs.eta_min))
@@ -87,8 +92,9 @@ def main():
     best_acc = 0.0
     early_stop_count = 0
     
+    model.train()
     for epoch in range(TrainingConfigs.num_training_epochs):
-        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, max_grad=TrainingConfigs.max_grad)
+        train_loss, _ = train_epoch(model, train_dataloader, optimizer, accelerator, epoch, grad_acc=config.train.grad_acc, max_grad=TrainingConfigs.max_grad)
         eval_loss, eval_acc = evaluate(model, eval_dataloader, accelerator, epoch)
         
         if eval_loss < best_loss:
@@ -114,17 +120,24 @@ def main():
         if epoch > TrainingConfigs.warmup_epochs:
             scheduler.step()
 
+        if eval_acc*100 > 93.0:
+            logging.info(f"Reached desired accuracy of 93.0%, stopping training.")
+            break
+
     accelerator.wait_for_everyone()
     accelerator.end_training()
     unwrapped_model = accelerator.unwrap_model(model)
     torch.save(unwrapped_model.state_dict(), os.path.join(model_save_dir, "checkpoints", f'final_model.pth'))
     
-    eval_loss, eval_acc = evaluate(model, test_dataloader, accelerator, epoch)
+    unwrapped_model.eval()
+    eval_loss, eval_acc = evaluate(unwrapped_model, test_dataloader, accelerator, epoch)
     logging.info(
         f"Test Performance: "
         f"Average Loss: {eval_loss:.4f}, "
         f"Average Accuracy: {eval_acc:.4f}, "
     )
+
+    unwrapped_model.save_feature_banks(train_dataloader, accelerator, config.loss.memory_bandk_dir)
 
 if __name__ == "__main__":
     main()

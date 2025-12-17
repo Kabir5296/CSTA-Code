@@ -1,0 +1,6 @@
+model_save/*
+DATA/*
+!DATA/tasks
+**/*__pycache__
+**/*.ipynb
+venv

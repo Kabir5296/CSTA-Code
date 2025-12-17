@@ -1,0 +1,2 @@
+usage: evaluation.py [-h] [--config CONFIG] [--save_results SAVE_RESULTS]
+evaluation.py: error: unrecognized arguments: --save_folder model_save/smaller_model
