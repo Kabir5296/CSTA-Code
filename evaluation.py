@@ -22,7 +22,7 @@ def main():
     
     # Create workdirectory
     work_dir = os.path.join(args.save_results, config.data.dataset_name, f"task_{config.task.task_n}")
-    
+    ## chang3 to show haixu github
     # setup directory. work_dir -) a. config, b. results
     save_eval_config_dir = os.path.join(work_dir, "config")
     log_dir = os.path.join(work_dir, "results")
